@@ -4,7 +4,8 @@ plugins {
 }
 
 group = "io.github.j4sp3rtm"
-version = "1.0.0"
+// Overridable from CI via -PpluginVersion=<x> (the release workflow derives it from the git tag).
+version = (findProperty("pluginVersion") as String?) ?: "1.0.0"
 
 repositories {
     mavenCentral()
