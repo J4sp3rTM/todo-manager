@@ -1,0 +1,84 @@
+<idea-plugin>
+    <id>io.github.j4sp3rtm.todomanager</id>
+    <name>TODO Manager</name>
+    <!-- version is patched in from build.gradle.kts (project version) -->
+    <vendor url="https://github.com/J4sp3rTM">J4sp3r</vendor>
+    <description><![CDATA[
+        <p><b>TODO Manager</b> is a dedicated tool window for tracking <code>TODO</code>,
+        <code>FIXME</code>, <code>HACK</code>, <code>NOTE</code>, and <code>XXX</code> comments
+        across your source code — in <b>any language</b>, with structured metadata and two-way editing.</p>
+
+        <p>It understands a structured comment format:</p>
+        <pre>// TODO [tag] (priority) description</pre>
+
+        <h3>Features</h3>
+        <ul>
+            <li><b>Tool window</b> with a tree view of every TODO in the project,
+                grouped by file, tag, or priority.</li>
+            <li><b>Bidirectional editing</b> — change a TODO's description, tag, or priority
+                from the panel and the source comment is rewritten in place (with full undo support).</li>
+            <li><b>Editor highlighting</b> — keywords, tags, priorities, description text, and
+                comment delimiters are colorized directly in the editor.</li>
+            <li><b>Add &amp; complete</b> — insert new TODOs at the caret, or mark them done.</li>
+            <li><b>Fully configurable</b> — customize keywords and all colors under
+                <i>Settings &gt; Tools &gt; TODO Manager</i>.</li>
+            <li><b>Auto-refresh</b> as you edit files.</li>
+        </ul>
+
+        <p>Works in all IntelliJ-based IDEs — IntelliJ IDEA, WebStorm, PyCharm, GoLand,
+        PhpStorm, Rider, CLion, RubyMine, Android Studio, and more.</p>
+    ]]></description>
+
+    <depends>com.intellij.modules.platform</depends>
+
+    <change-notes><![CDATA[
+        <h3>1.0.0</h3>
+        <ul>
+            <li>Initial release</li>
+            <li>Tool window with tree view of all TODO/FIXME/HACK/NOTE comments</li>
+            <li>Structured comment format: // TODO [tag] (priority) description</li>
+            <li>Group by file, tag, or priority</li>
+            <li>Bidirectional editing: change priority/tag/description in panel → updates source</li>
+            <li>Add new TODOs from the panel</li>
+            <li>Mark TODOs as done</li>
+            <li>Configurable keywords and patterns</li>
+            <li>Auto-refresh on file changes</li>
+        </ul>
+    ]]></change-notes>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <!-- Tool window in the bottom panel -->
+        <toolWindow
+            id="TODO Manager"
+            anchor="bottom"
+            factoryClass="io.github.j4sp3rtm.todomanager.TodoToolWindowFactory"
+            icon="/icons/todo.svg"/>
+
+        <!-- Settings page under Settings > Tools -->
+        <applicationConfigurable
+            parentId="tools"
+            instance="io.github.j4sp3rtm.todomanager.TodoManagerConfigurable"
+            id="io.github.j4sp3rtm.todomanager.settings"
+            displayName="TODO Manager"/>
+
+        <!-- Persistent state for settings -->
+        <applicationService
+            serviceImplementation="io.github.j4sp3rtm.todomanager.TodoManagerSettings"/>
+
+        <!-- Project-level scanner service -->
+        <projectService
+            serviceImplementation="io.github.j4sp3rtm.todomanager.TodoScannerService"/>
+
+        <!-- Paints TODO highlighting into editor markup models. Done this way (rather than via an
+             annotator) so it works for every language even in files where the IDE disables
+             code-insight highlighting, e.g. loose Java/Kotlin files outside a source root. -->
+        <postStartupActivity
+            implementation="io.github.j4sp3rtm.todomanager.TodoHighlightingActivity"/>
+    </extensions>
+
+    <projectListeners>
+        <listener
+            class="io.github.j4sp3rtm.todomanager.TodoFileListener"
+            topic="com.intellij.openapi.vfs.newvfs.BulkFileListener"/>
+    </projectListeners>
+</idea-plugin>

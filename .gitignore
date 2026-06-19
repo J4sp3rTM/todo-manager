@@ -1,0 +1,26 @@
+# Gradle
+.gradle/
+build/
+
+# IntelliJ Platform Gradle Plugin caches
+.intellijPlatform/
+.kotlin/
+
+# Compiled output
+bin/
+out/
+*.class
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local / secrets
+*.local
+local.properties
