@@ -1,5 +1,6 @@
 package io.github.j4sp3rtm.todomanager
 
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.project.Project
@@ -55,12 +56,37 @@ class TodoScannerService(private val project: Project) {
 
     /** Rescans a single file and merges results, respecting the current scan scope. */
     fun refreshFile(virtualFile: VirtualFile) {
-        val fileItems = runReadAction {
-            if (isInScope(virtualFile)) scanFile(virtualFile) else emptyList()
+        // null = the file's PSI hasn't caught up with its document yet (offsets would be wrong);
+        // leave the cached items untouched and re-scan once everything is committed.
+        val fileItems: List<TodoItem>? = runReadAction {
+            when {
+                !isInScope(virtualFile) -> emptyList()
+                !isPsiInSyncWithDocument(virtualFile) -> null
+                else -> scanFile(virtualFile)
+            }
+        }
+        if (fileItems == null) {
+            ApplicationManager.getApplication().invokeLater({
+                PsiDocumentManager.getInstance(project).performWhenAllCommitted {
+                    ApplicationManager.getApplication().executeOnPooledThread { refreshFile(virtualFile) }
+                }
+            }) { project.isDisposed }
+            return
         }
         val otherItems = codeItems.filter { it.file != virtualFile }
         codeItems = otherItems + fileItems
         notifyListeners()
+    }
+
+    /**
+     * True if [virtualFile]'s PSI and document agree in length. Right after a file changes, the
+     * document is reloaded before the PSI is reparsed, so PSI offsets can momentarily point past the
+     * document end — scanning then would crash [com.intellij.openapi.editor.Document.getLineNumber].
+     */
+    private fun isPsiInSyncWithDocument(virtualFile: VirtualFile): Boolean {
+        val psiFile = PsiManager.getInstance(project).findFile(virtualFile) ?: return true
+        val document = PsiDocumentManager.getInstance(project).getDocument(psiFile) ?: return true
+        return document.textLength == psiFile.textLength
     }
 
     /* ============ General (code-free) todos ============ */

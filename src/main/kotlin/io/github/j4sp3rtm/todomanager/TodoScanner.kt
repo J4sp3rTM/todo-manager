@@ -97,6 +97,10 @@ object TodoScanner {
                 }
             }
 
+            // PSI offsets can momentarily outrun the document right after a file changes (the document
+            // is reloaded before the PSI is reparsed); skip rather than let getLineNumber throw.
+            if (document != null && matchEndAbs > document.textLength) continue
+
             val matchRange = TextRange(matchStartAbs, matchEndAbs)
             val lineNumber = document?.getLineNumber(matchStartAbs) ?: 0
 
