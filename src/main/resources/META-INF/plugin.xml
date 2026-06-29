@@ -37,6 +37,13 @@
     <depends>com.intellij.modules.platform</depends>
 
     <change-notes><![CDATA[
+        <h3>1.2.1</h3>
+        <ul>
+            <li><b>Fix</b> — no longer throws an <code>IndexOutOfBoundsException</code> when scanning a
+                file whose content has just changed (the comment offsets could briefly outrun the
+                reloaded document). Affected files now re-scan once the editor catches up.</li>
+        </ul>
+
         <h3>1.2.0</h3>
         <ul>
             <li><b>Keyword case matching</b> — choose <i>Any case</i>, <i>Upper-case only</i>, or
