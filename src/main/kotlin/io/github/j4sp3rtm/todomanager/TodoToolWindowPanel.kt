@@ -82,7 +82,7 @@ class TodoToolWindowPanel(private val project: Project) : JPanel(BorderLayout())
     }
 
     private fun createToolbar(): JPanel {
-        val toolbar = JPanel(FlowLayout(FlowLayout.LEFT, 4, 2)).apply {
+        val toolbar = JPanel(WrapLayout(FlowLayout.LEFT, 4, 2)).apply {
             border = JBUI.Borders.customLineBottom(JBColor.border())
         }
 
