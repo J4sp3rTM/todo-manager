@@ -1,6 +1,6 @@
 package io.github.j4sp3rtm.todomanager
 
-import com.intellij.openapi.application.ReadAction
+import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ProjectFileIndex
@@ -47,7 +47,7 @@ class TodoScannerService(private val project: Project) {
 
     /** Rescans the entire project for TODO items. Call from a background thread. */
     fun refresh() {
-        codeItems = ReadAction.compute<List<TodoItem>, Throwable> {
+        codeItems = runReadAction {
             scanProject()
         }
         notifyListeners()
@@ -55,7 +55,7 @@ class TodoScannerService(private val project: Project) {
 
     /** Rescans a single file and merges results, respecting the current scan scope. */
     fun refreshFile(virtualFile: VirtualFile) {
-        val fileItems = ReadAction.compute<List<TodoItem>, Throwable> {
+        val fileItems = runReadAction {
             if (isInScope(virtualFile)) scanFile(virtualFile) else emptyList()
         }
         val otherItems = codeItems.filter { it.file != virtualFile }
