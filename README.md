@@ -12,7 +12,7 @@ dedicated tool window, editor highlighting, and two-way editing.
 
 ## Features
 
-- **Tool window** with a tree view of every TODO in the project, grouped by **file**, **tag**, or **priority**.
+- **Tool window** with a tree view of every TODO in the project, grouped by **file**, **tag**, **priority**, or **keyword**, with a **keyword filter** to show just one keyword at a time.
 - **Bidirectional editing** — change a TODO's description, tag, or priority from the panel
   and the source comment is rewritten in place, with full undo support.
 - **Editor highlighting** — keywords, tags, priorities, description text, and comment delimiters are colorized right in the editor.

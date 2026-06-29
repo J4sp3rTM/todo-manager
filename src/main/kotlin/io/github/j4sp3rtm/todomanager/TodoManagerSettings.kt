@@ -16,6 +16,9 @@ class TodoManagerSettings : PersistentStateComponent<TodoManagerSettings.State> 
         @XCollection(style = XCollection.Style.v2)
         var keywords: MutableList<String> = mutableListOf("TODO", "FIXME", "HACK", "NOTE", "XXX"),
         var groupBy: String = "FILE",
+
+        /** Tool window keyword filter: "All", or a single keyword (upper-case) to show exclusively. */
+        var keywordFilter: String = "All",
         var enabled: Boolean = true,
 
         /**

@@ -86,11 +86,24 @@ class TodoToolWindowPanel(private val project: Project) : JPanel(BorderLayout())
             border = JBUI.Borders.customLineBottom(JBColor.border())
         }
 
-        val groupByCombo = ComboBoxWithWidePopup(arrayOf("FILE", "TAG", "PRIORITY")).apply {
+        val groupByCombo = ComboBoxWithWidePopup(arrayOf("FILE", "TAG", "PRIORITY", "KEYWORD")).apply {
             selectedItem = Config.GROUP_BY
             toolTipText = "Group items by"
             addActionListener {
                 TodoManagerSettings.getInstance().state.groupBy = selectedItem as String
+                rebuildTree()
+            }
+        }
+
+        // Keyword filter: "All", or a single keyword shown exclusively. Built from the configured
+        // keywords (upper-cased to match the canonical form stored on each item).
+        val keywordOptions = (listOf(Config.ALL_KEYWORDS) + Config.KEYWORDS.map { it.uppercase() }.distinct())
+        if (Config.KEYWORD_FILTER !in keywordOptions) Config.KEYWORD_FILTER = Config.ALL_KEYWORDS
+        val keywordFilterCombo = ComboBoxWithWidePopup(keywordOptions.toTypedArray()).apply {
+            selectedItem = Config.KEYWORD_FILTER
+            toolTipText = "Show only items with this keyword"
+            addActionListener {
+                Config.KEYWORD_FILTER = selectedItem as String
                 rebuildTree()
             }
         }
@@ -127,6 +140,8 @@ class TodoToolWindowPanel(private val project: Project) : JPanel(BorderLayout())
 
         toolbar.add(JLabel("Group by:"))
         toolbar.add(groupByCombo)
+        toolbar.add(JLabel("Keyword:"))
+        toolbar.add(keywordFilterCombo)
         toolbar.add(addButton)
         toolbar.add(showDoneCheckBox)
         toolbar.add(collapseCheckBox)
@@ -144,14 +159,17 @@ class TodoToolWindowPanel(private val project: Project) : JPanel(BorderLayout())
         val priorGroups = captureGroupState()
 
         rootNode.removeAllChildren()
+        val keywordFilter = Config.KEYWORD_FILTER
         val items = scannerService.items
             .filter { Config.SHOW_DONE || !it.done }
+            .filter { keywordFilter == Config.ALL_KEYWORDS || it.keyword.equals(keywordFilter, ignoreCase = true) }
             .sortedWith(compareBy({ it.file?.path ?: "" }, { it.line }))
         val groupBy = Config.GROUP_BY
 
         val grouped: Map<String, List<TodoItem>> = when (groupBy) {
             "TAG" -> items.groupBy { it.tag ?: "(no tag)" }
             "PRIORITY" -> items.groupBy { it.priority?.replaceFirstChar { c -> c.uppercase() } ?: "(no priority)" }
+            "KEYWORD" -> items.groupBy { it.keyword }
             else -> items.groupBy { it.file?.name ?: GENERAL_GROUP }
         }
 

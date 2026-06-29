@@ -27,6 +27,13 @@ object Config {
     val KEYWORDS_AT_LINE_START: Boolean get() = settings.keywordsAtLineStart
     val SUPPRESS_IDE_TODO: Boolean get() = settings.suppressIdeTodoHighlighting
     val GROUP_BY: String get() = settings.groupBy
+
+    /** Tool window keyword filter: [ALL_KEYWORDS] (show everything) or a single upper-case keyword. */
+    var KEYWORD_FILTER: String
+        get() = settings.keywordFilter
+        set(value) { settings.keywordFilter = value }
+
+    const val ALL_KEYWORDS = "All"
     val ENABLED: Boolean get() = settings.enabled
     val DONE_KEYWORD: String get() = settings.doneKeyword
     var SHOW_DONE: Boolean
