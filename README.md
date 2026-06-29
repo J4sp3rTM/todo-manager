@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/hero.svg" alt="TODO Manager" width="840">
+  <img src=".github/assets/hero.svg" alt="TODO Manager" width="840">
 </p>
 
 A JetBrains IDE plugin that turns scattered `TODO`, `FIXME`, `HACK`, `NOTE`, and `XXX`
@@ -7,7 +7,7 @@ comments in your code — in **any language** — into a structured, editable to
 dedicated tool window, editor highlighting, and two-way editing.
 
 <p align="center">
-  <img src="assets/lifecycle.svg" alt="Scan comments, list them, edit inline, then complete with a DONE stamp" width="840">
+  <img src=".github/assets/lifecycle.svg" alt="Scan comments, list them, edit inline, then complete with a DONE stamp" width="840">
 </p>
 
 ## Features
@@ -36,7 +36,7 @@ dedicated tool window, editor highlighting, and two-way editing.
 - **Auto-refresh** as you edit files.
 
 <p align="center">
-  <img src="assets/editing-flow.svg" alt="Edit a TODO in the tool window and the source comment is rewritten; edit the comment and the list refreshes" width="780">
+  <img src=".github/assets/editing-flow.svg" alt="Edit a TODO in the tool window and the source comment is rewritten; edit the comment and the list refreshes" width="780">
 </p>
 
 ## Comment format
@@ -44,7 +44,7 @@ dedicated tool window, editor highlighting, and two-way editing.
 TODO Manager understands a structured comment format — each part is colorized in the editor:
 
 <p align="center">
-  <img src="assets/comment-format.svg" alt="// TODO [tag] (priority) description, with each part colorized" width="720">
+  <img src=".github/assets/comment-format.svg" alt="// TODO [tag] (priority) description, with each part colorized" width="720">
 </p>
 
 | Part | Syntax | Example | Notes |
@@ -63,7 +63,7 @@ Sensible defaults out of the box, all customizable under *Settings > Tools > TOD
 Tag colors are assigned automatically from a palette (with per-tag overrides available).
 
 <p align="center">
-  <img src="assets/colors.svg" alt="Default keyword and priority colors" width="780">
+  <img src=".github/assets/colors.svg" alt="Default keyword and priority colors" width="780">
 </p>
 
 ## Requirements
