@@ -74,7 +74,7 @@
             <li>Create <b>general (code-free) TODOs</b> from the panel — check "General TODO" in the
                 New TODO dialog to track items that aren't attached to any comment.</li>
             <li><b>Mark as Done</b> now stamps the completion with your git user name and the date,
-                e.g. <code>DONE fix login (done by Jasper on 2026-06-29)</code>.</li>
+                e.g. <code>DONE fix login (done by J4sp3r on 2026-06-29)</code>.</li>
             <li><b>Completed items stay visible</b> — DONE comments and done general todos are shown
                 struck through with a "done by … on …" label. Toggle them with <b>Show done</b> in
                 the toolbar.</li>
