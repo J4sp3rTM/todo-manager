@@ -7,6 +7,25 @@ object Config {
     private val settings get() = TodoManagerSettings.getInstance().state
 
     val KEYWORDS: List<String> get() = settings.keywords
+
+    /** "ANY" (case-insensitive), "UPPER" (only upper-case), or "LOWER" (only lower-case). */
+    val KEYWORD_CASE: String get() = settings.keywordCase
+
+    /** Non-ANY case modes require exact-case matching. */
+    val CASE_SENSITIVE_KEYWORDS: Boolean get() = settings.keywordCase != "ANY"
+
+    /** Keywords adjusted to the configured case mode, for feeding into [TodoPattern]. */
+    fun matchKeywords(): List<String> = KEYWORDS.map { applyKeywordCase(it) }
+
+    /** Renders a keyword in the configured case (used when inserting/rewriting comments). */
+    fun applyKeywordCase(keyword: String): String = when (settings.keywordCase) {
+        "LOWER" -> keyword.lowercase()
+        "UPPER" -> keyword.uppercase()
+        else -> keyword
+    }
+
+    val KEYWORDS_AT_LINE_START: Boolean get() = settings.keywordsAtLineStart
+    val SUPPRESS_IDE_TODO: Boolean get() = settings.suppressIdeTodoHighlighting
     val GROUP_BY: String get() = settings.groupBy
     val ENABLED: Boolean get() = settings.enabled
     val DONE_KEYWORD: String get() = settings.doneKeyword

@@ -23,6 +23,9 @@ class TodoHighlightingActivity : ProjectActivity {
         val factory = EditorFactory.getInstance()
         val alarm = Alarm(Alarm.ThreadToUse.SWING_THREAD, project)
 
+        // Enforce the IDE-TODO suppression setting (app-global; idempotent across projects).
+        onEdt(project) { IdeTodoSuppressor.sync() }
+
         // Repaint when an editor opens.
         factory.addEditorFactoryListener(object : EditorFactoryListener {
             override fun editorCreated(event: EditorFactoryEvent) {

@@ -26,6 +26,14 @@ It understands a structured comment format:
   *General TODO* in the New TODO dialog; they're stored with the project and shown alongside
   code TODOs.
 - **Fully configurable** — customize keywords and all colors under *Settings > Tools > TODO Manager*.
+- **Precise keyword matching** — choose how keyword **case** is matched (any case, upper-case only,
+  or lower-case only, so a lower-case `note` in prose isn't mistaken for the `NOTE` keyword) and
+  optionally require a keyword to be the **first word on its line** (so keywords appearing
+  mid-sentence are ignored). Defaults to any case / match anywhere.
+- **No double highlighting** — optionally suppress the IDE's own built-in TODO highlighting
+  (*Settings > Editor > TODO*) so it doesn't overlap this plugin's. Turning it back off restores
+  the IDE's patterns. (If you uninstall the plugin while it's on, restore them via
+  *Settings > Editor > TODO > Reset to Defaults*.)
 - **Auto-refresh** as you edit files.
 
 ## Comment format

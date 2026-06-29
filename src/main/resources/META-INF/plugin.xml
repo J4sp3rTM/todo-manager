@@ -1,12 +1,13 @@
 <idea-plugin>
     <id>io.github.j4sp3rtm.todomanager</id>
-    <name>TODO Manager</name>
+    <name>TODO Highlighter &amp; Comment Manager</name>
     <!-- version is patched in from build.gradle.kts (project version) -->
     <vendor url="https://github.com/J4sp3rTM">J4sp3r</vendor>
     <description><![CDATA[
-        <p><b>TODO Manager</b> is a dedicated tool window for tracking <code>TODO</code>,
+        <p><b>TODO Highlighter &amp; Comment Manager</b> highlights and tracks <code>TODO</code>,
         <code>FIXME</code>, <code>HACK</code>, <code>NOTE</code>, and <code>XXX</code> comments
-        across your source code — in <b>any language</b>, with structured metadata and two-way editing.</p>
+        across your source code — in <b>any language</b>, with editor highlighting, a dedicated tool
+        window, structured metadata, and two-way editing.</p>
 
         <p>It understands a structured comment format:</p>
         <pre>// TODO [tag] (priority) description</pre>
@@ -20,6 +21,10 @@
             <li><b>Editor highlighting</b> — keywords, tags, priorities, description text, and
                 comment delimiters are colorized directly in the editor.</li>
             <li><b>Add &amp; complete</b> — insert new TODOs at the caret, or mark them done.</li>
+            <li><b>Precise matching</b> — choose how keyword case is matched (any / upper-only /
+                lower-only) and optionally require a keyword to be the first word on its line, so
+                words like "note" mid-sentence aren't picked up. Optionally suppress the IDE's own
+                built-in TODO highlighting so it doesn't double up with this plugin.</li>
             <li><b>Fully configurable</b> — customize keywords and all colors under
                 <i>Settings &gt; Tools &gt; TODO Manager</i>.</li>
             <li><b>Auto-refresh</b> as you edit files.</li>
@@ -32,6 +37,17 @@
     <depends>com.intellij.modules.platform</depends>
 
     <change-notes><![CDATA[
+        <h3>1.2.0</h3>
+        <ul>
+            <li><b>Keyword case matching</b> — choose <i>Any case</i>, <i>Upper-case only</i>, or
+                <i>Lower-case only</i> so a lower-case <code>note</code> in prose isn't mistaken for
+                the <code>NOTE</code> keyword.</li>
+            <li><b>First-word matching</b> — optionally only recognize a keyword when it's the first
+                word on its line, so keywords appearing mid-sentence are ignored.</li>
+            <li><b>Suppress IDE TODO highlighting</b> — optionally clear the IDE's own built-in
+                TODO highlighting so it doesn't double up with this plugin (restored when turned off).</li>
+        </ul>
+
         <h3>1.1.0</h3>
         <ul>
             <li>Create <b>general (code-free) TODOs</b> from the panel — check "General TODO" in the

@@ -18,15 +18,15 @@ object TodoEditor {
      * Rebuilds the full comment text from parts and replaces it in the document.
      */
     fun setDescription(project: Project, item: TodoItem, newDescription: String) {
-        rewriteComment(project, item, item.keyword, item.tag, item.priority, newDescription)
+        rewriteComment(project, item, item.matchedKeyword, item.tag, item.priority, newDescription)
     }
 
     fun setTag(project: Project, item: TodoItem, newTag: String?) {
-        rewriteComment(project, item, item.keyword, newTag, item.priority, item.description)
+        rewriteComment(project, item, item.matchedKeyword, newTag, item.priority, item.description)
     }
 
     fun setPriority(project: Project, item: TodoItem, newPriority: String?) {
-        rewriteComment(project, item, item.keyword, item.tag, newPriority, item.description)
+        rewriteComment(project, item, item.matchedKeyword, item.tag, newPriority, item.description)
     }
 
     fun markDone(project: Project, item: TodoItem) {
@@ -83,7 +83,8 @@ object TodoEditor {
         val lineNum = document.getLineNumber(caretOffset)
         val lineEnd = document.getLineEndOffset(lineNum)
 
-        val commentText = buildCommentText(keyword, tag, priority, description)
+        // Write the keyword in the configured case so it is recognized under UPPER/LOWER modes.
+        val commentText = buildCommentText(Config.applyKeywordCase(keyword), tag, priority, description)
         val indent = getLineIndent(document, lineNum)
         val insertion = "\n${indent}${wrapInComment(project, document, commentText)}"
 

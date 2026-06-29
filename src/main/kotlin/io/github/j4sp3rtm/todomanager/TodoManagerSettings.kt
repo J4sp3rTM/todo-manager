@@ -18,6 +18,27 @@ class TodoManagerSettings : PersistentStateComponent<TodoManagerSettings.State> 
         var groupBy: String = "FILE",
         var enabled: Boolean = true,
 
+        /**
+         * How keyword casing is matched: "ANY" (case-insensitive, default), "UPPER" (only
+         * upper-case, e.g. `NOTE`), or "LOWER" (only lower-case, e.g. `note`). The non-ANY modes
+         * stop a keyword written in the other case from being picked up.
+         */
+        var keywordCase: String = "ANY",
+
+        /** When true, a keyword is only recognized as the first word on its line, not mid-sentence. */
+        var keywordsAtLineStart: Boolean = false,
+
+        /**
+         * When true, the IDE's own built-in TODO highlighting (Settings > Editor > TODO) is cleared
+         * so it doesn't double up with this plugin. The original patterns are stashed in
+         * [savedIdeTodoPatterns] so they can be restored when this is turned back off.
+         */
+        var suppressIdeTodoHighlighting: Boolean = false,
+
+        /** Backup of the IDE's TODO patterns while suppressed, encoded as "<T|F><regex>". */
+        @XCollection(style = XCollection.Style.v2)
+        var savedIdeTodoPatterns: MutableList<String> = mutableListOf(),
+
         /** Keyword that marks a TODO as completed (written by "Mark as Done", scanned back as done). */
         var doneKeyword: String = "DONE",
 

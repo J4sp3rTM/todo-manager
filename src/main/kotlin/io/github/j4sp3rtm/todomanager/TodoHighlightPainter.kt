@@ -81,7 +81,11 @@ object TodoHighlightPainter {
     /** The colored sub-ranges of a single comment: keyword, tag, priority, description, delimiters. */
     private fun rangesFor(comment: PsiComment): List<Pair<TextRange, TextAttributes>> {
         val text = comment.text
-        val matches = TodoPattern.build(Config.KEYWORDS).findAll(text).toList()
+        val matches = TodoPattern.build(
+            Config.matchKeywords(),
+            caseSensitive = Config.CASE_SENSITIVE_KEYWORDS,
+            atLineStart = Config.KEYWORDS_AT_LINE_START,
+        ).findAll(text).toList()
         if (matches.isEmpty()) return emptyList()
 
         val result = mutableListOf<Pair<TextRange, TextAttributes>>()

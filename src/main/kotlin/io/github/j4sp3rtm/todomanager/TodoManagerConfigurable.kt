@@ -16,6 +16,9 @@ class TodoManagerConfigurable : Configurable {
     private var groupByCombo: JComboBox<String>? = null
     private var boldKeywordsCheckbox: JCheckBox? = null
     private var underlineTagsCheckbox: JCheckBox? = null
+    private var keywordCaseCombo: JComboBox<String>? = null
+    private var keywordsAtLineStartCheckbox: JCheckBox? = null
+    private var suppressIdeTodoCheckbox: JCheckBox? = null
 
     // Scanning scope
     private var limitToSourceDirsCheckbox: JCheckBox? = null
@@ -57,6 +60,18 @@ class TodoManagerConfigurable : Configurable {
         }
         boldKeywordsCheckbox = JCheckBox("Bold keywords", state.boldKeywords)
         underlineTagsCheckbox = JCheckBox("Underline tags", state.underlineTags)
+        keywordCaseCombo = JComboBox(KEYWORD_CASE_LABELS).apply {
+            selectedItem = labelForCase(state.keywordCase)
+            toolTipText = "Any case: case-insensitive. Upper/Lower-case only: a keyword in the other " +
+                "case (e.g. lower-case 'note' in prose) is not picked up."
+        }
+        keywordsAtLineStartCheckbox = JCheckBox("Only match keyword at start of comment/line", state.keywordsAtLineStart).apply {
+            toolTipText = "When on, a keyword is recognized only as the first word on its line, not mid-sentence."
+        }
+        suppressIdeTodoCheckbox = JCheckBox("Suppress the IDE's built-in TODO highlighting", state.suppressIdeTodoHighlighting).apply {
+            toolTipText = "Clears the IDE's own todo/fixme patterns (Settings > Editor > TODO) so they " +
+                "don't double up with this plugin. Restored when turned off. Also empties the IDE's TODO tool window."
+        }
 
         limitToSourceDirsCheckbox = JCheckBox(
             "Limit scanning to detected source directories (recommended)", state.limitToSourceDirs
@@ -140,6 +155,12 @@ class TodoManagerConfigurable : Configurable {
             add(syncButton.leftAlign())
             add(vstrut())
             add(labeledRow("Group by:", groupByCombo!!))
+            add(vstrut())
+            add(labeledRow("Keyword case:", keywordCaseCombo!!))
+            add(Box.createVerticalStrut(4))
+            add(keywordsAtLineStartCheckbox!!.leftAlign())
+            add(Box.createVerticalStrut(4))
+            add(suppressIdeTodoCheckbox!!.leftAlign())
             add(vstrut())
             add(boldKeywordsCheckbox!!.leftAlign())
             add(Box.createVerticalStrut(4))
@@ -368,6 +389,9 @@ class TodoManagerConfigurable : Configurable {
         if (s.enabled != enabledCheckbox?.isSelected) return true
         if (s.keywords != currentKeywords) return true
         if (s.groupBy != groupByCombo?.selectedItem) return true
+        if (s.keywordCase != selectedKeywordCase()) return true
+        if (s.keywordsAtLineStart != keywordsAtLineStartCheckbox?.isSelected) return true
+        if (s.suppressIdeTodoHighlighting != suppressIdeTodoCheckbox?.isSelected) return true
         if (s.boldKeywords != boldKeywordsCheckbox?.isSelected) return true
         if (s.underlineTags != underlineTagsCheckbox?.isSelected) return true
 
@@ -407,6 +431,9 @@ class TodoManagerConfigurable : Configurable {
         s.enabled = enabledCheckbox?.isSelected ?: s.enabled
         s.keywords = parseKeywords().toMutableList()
         s.groupBy = groupByCombo?.selectedItem as? String ?: s.groupBy
+        s.keywordCase = selectedKeywordCase()
+        s.keywordsAtLineStart = keywordsAtLineStartCheckbox?.isSelected ?: s.keywordsAtLineStart
+        s.suppressIdeTodoHighlighting = suppressIdeTodoCheckbox?.isSelected ?: s.suppressIdeTodoHighlighting
         s.boldKeywords = boldKeywordsCheckbox?.isSelected ?: s.boldKeywords
         s.underlineTags = underlineTagsCheckbox?.isSelected ?: s.underlineTags
         s.limitToSourceDirs = limitToSourceDirsCheckbox?.isSelected ?: s.limitToSourceDirs
@@ -428,6 +455,9 @@ class TodoManagerConfigurable : Configurable {
             .toMutableMap()
         s.tagPalette = tagPalettePanels.mapNotNull { it.selectedColor }.map { colorToHex(it) }.toMutableList()
 
+        // Apply (or undo) IDE built-in TODO suppression to match the saved setting.
+        IdeTodoSuppressor.sync()
+
         // Repaint editor highlighting and rescan in all open projects so changes apply immediately
         for (project in ProjectManager.getInstance().openProjects) {
             TodoHighlightPainter.refreshAll(project)
@@ -442,6 +472,9 @@ class TodoManagerConfigurable : Configurable {
         enabledCheckbox?.isSelected = s.enabled
         keywordsField?.text = s.keywords.joinToString(", ")
         groupByCombo?.selectedItem = s.groupBy
+        keywordCaseCombo?.selectedItem = labelForCase(s.keywordCase)
+        keywordsAtLineStartCheckbox?.isSelected = s.keywordsAtLineStart
+        suppressIdeTodoCheckbox?.isSelected = s.suppressIdeTodoHighlighting
         boldKeywordsCheckbox?.isSelected = s.boldKeywords
         underlineTagsCheckbox?.isSelected = s.underlineTags
         limitToSourceDirsCheckbox?.isSelected = s.limitToSourceDirs
@@ -466,6 +499,9 @@ class TodoManagerConfigurable : Configurable {
         groupByCombo = null
         boldKeywordsCheckbox = null
         underlineTagsCheckbox = null
+        keywordCaseCombo = null
+        keywordsAtLineStartCheckbox = null
+        suppressIdeTodoCheckbox = null
         limitToSourceDirsCheckbox = null
         respectIdeExcludesCheckbox = null
         sourceDirNamesField = null
@@ -489,6 +525,9 @@ class TodoManagerConfigurable : Configurable {
         enabledCheckbox?.isSelected = defaults.enabled
         keywordsField?.text = defaults.keywords.joinToString(", ")
         groupByCombo?.selectedItem = defaults.groupBy
+        keywordCaseCombo?.selectedItem = labelForCase(defaults.keywordCase)
+        keywordsAtLineStartCheckbox?.isSelected = defaults.keywordsAtLineStart
+        suppressIdeTodoCheckbox?.isSelected = defaults.suppressIdeTodoHighlighting
         boldKeywordsCheckbox?.isSelected = defaults.boldKeywords
         underlineTagsCheckbox?.isSelected = defaults.underlineTags
         limitToSourceDirsCheckbox?.isSelected = defaults.limitToSourceDirs
@@ -509,6 +548,10 @@ class TodoManagerConfigurable : Configurable {
         tagPaletteContainer?.revalidate()
         panel?.repaint()
     }
+
+    /** Currently selected keyword-case mode as a stored code ("ANY"/"UPPER"/"LOWER"). */
+    private fun selectedKeywordCase(): String =
+        caseForLabel(keywordCaseCombo?.selectedItem as? String)
 
     private fun parseKeywords(): List<String> =
         keywordsField?.text?.split(",")?.map { it.trim().uppercase() }?.filter { it.isNotEmpty() } ?: emptyList()
@@ -562,4 +605,20 @@ class TodoManagerConfigurable : Configurable {
 
     private fun colorToHex(c: Color): String =
         String.format("#%02X%02X%02X", c.red, c.green, c.blue)
+
+    private companion object {
+        val KEYWORD_CASE_LABELS = arrayOf("Any case", "Upper-case only", "Lower-case only")
+
+        fun labelForCase(code: String): String = when (code) {
+            "UPPER" -> "Upper-case only"
+            "LOWER" -> "Lower-case only"
+            else -> "Any case"
+        }
+
+        fun caseForLabel(label: String?): String = when (label) {
+            "Upper-case only" -> "UPPER"
+            "Lower-case only" -> "LOWER"
+            else -> "ANY"
+        }
+    }
 }

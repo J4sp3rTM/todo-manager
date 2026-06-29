@@ -14,7 +14,7 @@ enum class TodoSource { CODE, GENERAL }
  * [matchRange] are null and [generalId] identifies the stored entry instead.
  */
 data class TodoItem(
-    /** The keyword that matched (TODO, FIXME, HACK, NOTE, etc.) */
+    /** The keyword that matched, canonicalized to upper case (TODO, FIXME, NOTE, …) for display/color. */
     val keyword: String,
     /** Optional tag in [brackets], e.g. "auth", "perf". Null if absent. */
     val tag: String?,
@@ -44,4 +44,6 @@ data class TodoItem(
     val doneBy: String? = null,
     /** Date a general todo was marked done (yyyy-MM-dd). */
     val doneAt: String? = null,
+    /** The keyword exactly as written in the source, so edits preserve its casing. Defaults to [keyword]. */
+    val matchedKeyword: String = keyword,
 )

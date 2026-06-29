@@ -24,7 +24,13 @@ object TodoScanner {
     fun scan(file: PsiFile, document: Document?, virtualFile: VirtualFile?): List<TodoItem> {
         if (virtualFile == null) return emptyList()
         // The done keyword is scanned too, so completed items can be shown (and filtered) in the panel.
-        val pattern = TodoPattern.build(Config.KEYWORDS + Config.DONE_KEYWORD)
+        // It is appended in its written (DONE) form so completed items round-trip regardless of the
+        // case mode applied to user keywords.
+        val pattern = TodoPattern.build(
+            Config.matchKeywords() + Config.DONE_KEYWORD,
+            caseSensitive = Config.CASE_SENSITIVE_KEYWORDS,
+            atLineStart = Config.KEYWORDS_AT_LINE_START,
+        )
         val items = mutableListOf<TodoItem>()
 
         file.accept(object : PsiRecursiveElementWalkingVisitor() {
@@ -54,12 +60,18 @@ object TodoScanner {
         val (_, suffix) = CommentDelimiters.of(comment)
 
         for (match in pattern.findAll(text)) {
+            // Canonical (upper-case) keyword drives display/color/grouping; the source-case form is
+            // kept so edits write the keyword back without changing its casing.
             val keyword = match.groupValues[1].uppercase()
+            val matchedKeyword = match.groupValues[1]
             val tag = match.groupValues[2].ifEmpty { null }
             val priority = match.groupValues[3].ifEmpty { null }?.lowercase()
 
             var description = match.groupValues[4]
-            val matchStartAbs = elementStart + match.range.first
+            // Start the editable range at the keyword, not the overall match: the line-start anchor
+            // may consume leading delimiters/whitespace that must stay out of the rewritten range.
+            val keywordStart = match.groups[1]!!.range.first
+            val matchStartAbs = elementStart + keywordStart
             var matchEndAbs = elementStart + match.range.last + 1
 
             // When the keyword is on the comment's closing line, the description regex greedily
@@ -91,6 +103,7 @@ object TodoScanner {
             items.add(
                 TodoItem(
                     keyword = keyword,
+                    matchedKeyword = matchedKeyword,
                     tag = tag,
                     priority = priority,
                     description = description,
@@ -98,7 +111,7 @@ object TodoScanner {
                     line = lineNumber,
                     textRange = comment.textRange,
                     matchRange = matchRange,
-                    originalText = text.substring(match.range.first, matchEndAbs - elementStart),
+                    originalText = text.substring(keywordStart, matchEndAbs - elementStart),
                     isBlockComment = isBlock,
                     done = isDone,
                     doneBy = doneBy,
