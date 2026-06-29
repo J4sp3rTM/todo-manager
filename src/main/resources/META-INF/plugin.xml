@@ -37,6 +37,20 @@
     <depends>com.intellij.modules.platform</depends>
 
     <change-notes><![CDATA[
+        <h3>1.3.1</h3>
+        <ul>
+            <li><b>Collapse by default</b> — a <i>Collapse</i> toolbar toggle to start groups collapsed
+                instead of fully expanded.</li>
+            <li><b>Expand/collapse state preserved on refresh</b> — refreshing keeps each group the way
+                you left it; newly appearing groups follow the collapse-by-default setting.</li>
+            <li><b>Reverse sort</b> — a <i>Reverse</i> toolbar toggle that flips the group order and the
+                items within each group.</li>
+            <li><b>Live updates</b> — the tool window now refreshes as TODOs are added, changed, or
+                removed in the editor, without waiting for the file to be saved.</li>
+            <li><b>Fix</b> — no longer logs a <i>write-unsafe context</i> error while typing; the live
+                re-scan now runs only once the edited document's PSI is committed.</li>
+        </ul>
+
         <h3>1.2.1</h3>
         <ul>
             <li><b>Fix</b> — no longer throws an <code>IndexOutOfBoundsException</code> when scanning a
