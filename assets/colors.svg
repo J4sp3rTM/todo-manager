@@ -1,0 +1,33 @@
+<svg viewBox="0 0 820 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="t d" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif">
+  <title id="t">Default colors</title>
+  <desc id="d">Default highlight colors for keywords and priorities. Every color is configurable in settings.</desc>
+
+  <rect x="6" y="6" width="808" height="268" rx="16" fill="#1e1f22" stroke="#393b40" stroke-width="1.5"/>
+
+  <text x="40" y="48" font-size="18" font-weight="700" fill="#e8eaed">Default colors</text>
+  <text x="40" y="70" font-size="13" fill="#9ca0a6">All configurable under Settings &gt; Tools &gt; TODO Manager.</text>
+
+  <!-- keywords -->
+  <text x="40" y="110" font-size="11" font-weight="700" letter-spacing="1.5" fill="#6b7077">KEYWORDS</text>
+  <g font-family="'JetBrains Mono','SF Mono',Consolas,ui-monospace,monospace" font-size="14">
+    <rect x="40" y="126" width="18" height="18" rx="4" fill="#42A5F5"/><text x="70" y="140" fill="#c8ccd2">TODO</text>  <text x="230" y="140" text-anchor="end" fill="#6b7077">#42A5F5</text>
+    <rect x="40" y="160" width="18" height="18" rx="4" fill="#E53935"/><text x="70" y="174" fill="#c8ccd2">FIXME</text> <text x="230" y="174" text-anchor="end" fill="#6b7077">#E53935</text>
+    <rect x="40" y="194" width="18" height="18" rx="4" fill="#FF9800"/><text x="70" y="208" fill="#c8ccd2">HACK</text>  <text x="230" y="208" text-anchor="end" fill="#6b7077">#FF9800</text>
+    <rect x="40" y="228" width="18" height="18" rx="4" fill="#00ACC1"/><text x="70" y="242" fill="#c8ccd2">NOTE</text>  <text x="230" y="242" text-anchor="end" fill="#6b7077">#00ACC1</text>
+  </g>
+  <g font-family="'JetBrains Mono','SF Mono',Consolas,ui-monospace,monospace" font-size="14">
+    <rect x="280" y="126" width="18" height="18" rx="4" fill="#AB47BC"/><text x="310" y="140" fill="#c8ccd2">XXX</text> <text x="468" y="140" text-anchor="end" fill="#6b7077">#AB47BC</text>
+  </g>
+
+  <!-- divider -->
+  <line x1="512" y1="100" x2="512" y2="252" stroke="#2b2d30" stroke-width="1.5"/>
+
+  <!-- priorities -->
+  <text x="548" y="110" font-size="11" font-weight="700" letter-spacing="1.5" fill="#6b7077">PRIORITY</text>
+  <g font-family="'JetBrains Mono','SF Mono',Consolas,ui-monospace,monospace" font-size="14">
+    <rect x="548" y="126" width="18" height="18" rx="4" fill="#D32F2F"/><text x="578" y="140" fill="#c8ccd2">critical</text><text x="778" y="140" text-anchor="end" fill="#6b7077">#D32F2F</text>
+    <rect x="548" y="160" width="18" height="18" rx="4" fill="#E53935"/><text x="578" y="174" fill="#c8ccd2">high</text>    <text x="778" y="174" text-anchor="end" fill="#6b7077">#E53935</text>
+    <rect x="548" y="194" width="18" height="18" rx="4" fill="#FFB300"/><text x="578" y="208" fill="#c8ccd2">medium</text>  <text x="778" y="208" text-anchor="end" fill="#6b7077">#FFB300</text>
+    <rect x="548" y="228" width="18" height="18" rx="4" fill="#4CAF50"/><text x="578" y="242" fill="#c8ccd2">low</text>     <text x="778" y="242" text-anchor="end" fill="#6b7077">#4CAF50</text>
+  </g>
+</svg>

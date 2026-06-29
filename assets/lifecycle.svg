@@ -1,0 +1,41 @@
+<svg viewBox="0 0 880 170" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="t d" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif">
+  <title id="t">TODO lifecycle</title>
+  <desc id="d">Four steps: scan comments, list them in the tool window, edit inline, then complete with a DONE stamp.</desc>
+
+  <defs>
+    <marker id="ah2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0 0 L10 5 L0 10 z" fill="#4b5059"/>
+    </marker>
+  </defs>
+
+  <!-- step pills -->
+  <g>
+    <rect x="32"  y="44" width="172" height="58" rx="12" fill="#1e1f22" stroke="#393b40" stroke-width="1.5"/>
+    <circle cx="64" cy="73" r="13" fill="#42A5F5" fill-opacity="0.15"/><text x="64" y="78" text-anchor="middle" font-size="13" font-weight="700" fill="#42A5F5">1</text>
+    <text x="88" y="69" font-size="15" font-weight="600" fill="#e8eaed">Scan</text>
+    <text x="88" y="88" font-size="11.5" fill="#9ca0a6">find keywords</text>
+
+    <rect x="252" y="44" width="172" height="58" rx="12" fill="#1e1f22" stroke="#393b40" stroke-width="1.5"/>
+    <circle cx="284" cy="73" r="13" fill="#42A5F5" fill-opacity="0.15"/><text x="284" y="78" text-anchor="middle" font-size="13" font-weight="700" fill="#42A5F5">2</text>
+    <text x="308" y="69" font-size="15" font-weight="600" fill="#e8eaed">List</text>
+    <text x="308" y="88" font-size="11.5" fill="#9ca0a6">in the tool window</text>
+
+    <rect x="472" y="44" width="172" height="58" rx="12" fill="#1e1f22" stroke="#393b40" stroke-width="1.5"/>
+    <circle cx="504" cy="73" r="13" fill="#42A5F5" fill-opacity="0.15"/><text x="504" y="78" text-anchor="middle" font-size="13" font-weight="700" fill="#42A5F5">3</text>
+    <text x="528" y="69" font-size="15" font-weight="600" fill="#e8eaed">Edit</text>
+    <text x="528" y="88" font-size="11.5" fill="#9ca0a6">tweak inline</text>
+
+    <rect x="692" y="44" width="172" height="58" rx="12" fill="#1e1f22" stroke="#4CAF50" stroke-opacity="0.6" stroke-width="1.5"/>
+    <circle cx="724" cy="73" r="13" fill="#4CAF50" fill-opacity="0.18"/><path d="M718 73 l4 4 l8 -9" fill="none" stroke="#4CAF50" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="748" y="69" font-size="15" font-weight="600" fill="#e8eaed">Complete</text>
+    <text x="748" y="88" font-size="11.5" fill="#9ca0a6">stamp DONE</text>
+  </g>
+
+  <!-- arrows -->
+  <path d="M210 73 H246" fill="none" stroke="#4b5059" stroke-width="1.6" marker-end="url(#ah2)"/>
+  <path d="M430 73 H466" fill="none" stroke="#4b5059" stroke-width="1.6" marker-end="url(#ah2)"/>
+  <path d="M650 73 H686" fill="none" stroke="#4b5059" stroke-width="1.6" marker-end="url(#ah2)"/>
+
+  <!-- done stamp -->
+  <text x="440" y="138" text-anchor="middle" font-size="13" font-family="'JetBrains Mono','SF Mono',Consolas,ui-monospace,monospace"><tspan fill="#4CAF50">DONE</tspan><tspan fill="#6b7077"> fix login (done by J4sp3r on 2026-06-29)</tspan></text>
+</svg>

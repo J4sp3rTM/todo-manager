@@ -1,0 +1,35 @@
+<svg viewBox="0 0 820 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="t d" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif">
+  <title id="t">Bidirectional editing</title>
+  <desc id="d">The tool window and the source comment stay in sync: editing either side updates the other, with full undo.</desc>
+
+  <defs>
+    <marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#9ca0a6"/>
+    </marker>
+  </defs>
+
+  <text x="410" y="38" text-anchor="middle" font-size="19" font-weight="700" fill="#e8eaed">Bidirectional editing</text>
+  <text x="410" y="62" text-anchor="middle" font-size="13" fill="#9ca0a6">Edit either side — the other updates instantly, with full undo.</text>
+
+  <!-- tool window -->
+  <rect x="44" y="92" width="300" height="112" rx="12" fill="#1e1f22" stroke="#393b40" stroke-width="1.5"/>
+  <path d="M56 92 H332 a12 12 0 0 1 12 12 V120 H44 V104 a12 12 0 0 1 12 -12 Z" fill="#2b2d30"/>
+  <text x="64" y="112" font-size="11" font-weight="700" letter-spacing="1" fill="#6b7077">TOOL WINDOW</text>
+  <circle cx="68" cy="156" r="3" fill="#6b7077"/>
+  <text x="82" y="161" font-size="14.5" font-family="'JetBrains Mono','SF Mono',Consolas,ui-monospace,monospace"><tspan fill="#E53935">FIXME</tspan><tspan> </tspan><tspan fill="#26A69A">[auth]</tspan><tspan> </tspan><tspan fill="#E53935">(high)</tspan></text>
+  <text x="82" y="185" font-size="13" fill="#808080">token refresh races…</text>
+
+  <!-- editor -->
+  <rect x="476" y="92" width="300" height="112" rx="12" fill="#1e1f22" stroke="#393b40" stroke-width="1.5"/>
+  <path d="M488 92 H764 a12 12 0 0 1 12 12 V120 H476 V104 a12 12 0 0 1 12 -12 Z" fill="#2b2d30"/>
+  <text x="496" y="112" font-size="11" font-weight="700" letter-spacing="1" fill="#6b7077">EDITOR</text>
+  <text x="496" y="161" font-size="14.5" font-family="'JetBrains Mono','SF Mono',Consolas,ui-monospace,monospace"><tspan fill="#6A737D">// </tspan><tspan fill="#E53935">FIXME</tspan><tspan> </tspan><tspan fill="#26A69A">[auth]</tspan><tspan> </tspan><tspan fill="#E53935">(high)</tspan></text>
+  <text x="496" y="185" font-size="13" font-family="'JetBrains Mono','SF Mono',Consolas,ui-monospace,monospace" fill="#808080">token refresh…</text>
+
+  <!-- arrows -->
+  <path d="M352 134 H468" fill="none" stroke="#9ca0a6" stroke-width="1.6" marker-end="url(#ah)"/>
+  <text x="410" y="126" text-anchor="middle" font-size="11.5" fill="#9ca0a6">rewrites comment</text>
+
+  <path d="M468 172 H352" fill="none" stroke="#9ca0a6" stroke-width="1.6" marker-end="url(#ah)"/>
+  <text x="410" y="192" text-anchor="middle" font-size="11.5" fill="#9ca0a6">refreshes list</text>
+</svg>

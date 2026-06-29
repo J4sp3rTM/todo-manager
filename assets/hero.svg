@@ -1,0 +1,34 @@
+<svg viewBox="0 0 880 210" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="t d" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif">
+  <title id="t">TODO Manager</title>
+  <desc id="d">Banner for the TODO Manager JetBrains plugin with keyword chips for TODO, FIXME, HACK, NOTE and XXX.</desc>
+
+  <rect x="6" y="6" width="868" height="198" rx="16" fill="#1e1f22" stroke="#393b40" stroke-width="1.5"/>
+
+  <!-- check icon -->
+  <rect x="44" y="40" width="44" height="44" rx="11" fill="#42A5F5" fill-opacity="0.14" stroke="#42A5F5" stroke-opacity="0.55" stroke-width="1.5"/>
+  <path d="M55 62 l8 9 l16 -19" fill="none" stroke="#42A5F5" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- title + tagline -->
+  <text x="104" y="62" font-size="38" font-weight="700" fill="#e8eaed">TODO Manager</text>
+  <text x="106" y="92" font-size="16" fill="#9ca0a6">Turn scattered code comments into a structured, editable to-do list — in any JetBrains IDE.</text>
+
+  <!-- keyword chips -->
+  <g font-size="15" font-weight="600" font-family="'JetBrains Mono','SF Mono',Consolas,ui-monospace,monospace">
+    <rect x="48"  y="138" width="76" height="32" rx="8" fill="#42A5F5" fill-opacity="0.13" stroke="#42A5F5" stroke-opacity="0.5"/>
+    <text x="86"  y="159" text-anchor="middle" fill="#42A5F5">TODO</text>
+
+    <rect x="136" y="138" width="88" height="32" rx="8" fill="#E53935" fill-opacity="0.13" stroke="#E53935" stroke-opacity="0.5"/>
+    <text x="180" y="159" text-anchor="middle" fill="#E53935">FIXME</text>
+
+    <rect x="236" y="138" width="80" height="32" rx="8" fill="#FF9800" fill-opacity="0.13" stroke="#FF9800" stroke-opacity="0.5"/>
+    <text x="276" y="159" text-anchor="middle" fill="#FF9800">HACK</text>
+
+    <rect x="328" y="138" width="80" height="32" rx="8" fill="#00ACC1" fill-opacity="0.13" stroke="#00ACC1" stroke-opacity="0.5"/>
+    <text x="368" y="159" text-anchor="middle" fill="#00ACC1">NOTE</text>
+
+    <rect x="420" y="138" width="66" height="32" rx="8" fill="#AB47BC" fill-opacity="0.13" stroke="#AB47BC" stroke-opacity="0.5"/>
+    <text x="453" y="159" text-anchor="middle" fill="#AB47BC">XXX</text>
+  </g>
+
+  <text x="828" y="159" text-anchor="end" font-size="13" fill="#6b7077">+ your own keywords</text>
+</svg>

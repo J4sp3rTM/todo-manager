@@ -1,0 +1,29 @@
+<svg viewBox="0 0 760 150" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="t d" font-family="'JetBrains Mono','SF Mono','Cascadia Code',Consolas,ui-monospace,monospace">
+  <title id="t">TODO Manager comment format</title>
+  <desc id="d">An editor window showing two structured comments with each part colorized: delimiter, keyword, tag, priority and description.</desc>
+
+  <defs>
+    <clipPath id="card"><rect x="12" y="12" width="736" height="126" rx="12"/></clipPath>
+  </defs>
+
+  <rect x="12" y="12" width="736" height="126" rx="12" fill="#1e1f22" stroke="#393b40" stroke-width="1.5"/>
+
+  <g clip-path="url(#card)">
+    <!-- title bar -->
+    <rect x="12" y="12" width="736" height="40" fill="#2b2d30"/>
+    <circle cx="36" cy="32" r="6" fill="#ff5f56"/>
+    <circle cx="56" cy="32" r="6" fill="#ffbd2e"/>
+    <circle cx="76" cy="32" r="6" fill="#27c93f"/>
+    <text x="380" y="37" text-anchor="middle" font-size="13" fill="#9ca0a6">Example.java</text>
+
+    <!-- gutter -->
+    <rect x="12" y="52" width="44" height="86" fill="#1e1f22"/>
+    <line x1="56" y1="52" x2="56" y2="138" stroke="#2b2d30" stroke-width="1"/>
+    <text x="44" y="90"  text-anchor="end" font-size="14" fill="#4b5059">1</text>
+    <text x="44" y="122" text-anchor="end" font-size="14" fill="#4b5059">2</text>
+
+    <!-- code -->
+    <text x="72" y="90" font-size="17" xml:space="preserve"><tspan fill="#6A737D">// </tspan><tspan fill="#42A5F5">TODO</tspan><tspan> </tspan><tspan fill="#26A69A">[tag]</tspan><tspan> </tspan><tspan fill="#FFB300">(priority)</tspan><tspan> </tspan><tspan fill="#808080">description</tspan></text>
+    <text x="72" y="122" font-size="17" xml:space="preserve"><tspan fill="#6A737D">// </tspan><tspan fill="#E53935">FIXME</tspan><tspan> </tspan><tspan fill="#26A69A">[auth]</tspan><tspan> </tspan><tspan fill="#E53935">(high)</tspan><tspan> </tspan><tspan fill="#808080">token refresh races on logout</tspan></text>
+  </g>
+</svg>

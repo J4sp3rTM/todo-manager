@@ -1,15 +1,14 @@
-# TODO Manager
+<p align="center">
+  <img src="assets/hero.svg" alt="TODO Manager" width="840">
+</p>
 
 A JetBrains IDE plugin that turns scattered `TODO`, `FIXME`, `HACK`, `NOTE`, and `XXX`
 comments in your code — in **any language** — into a structured, editable to-do list, with a
 dedicated tool window, editor highlighting, and two-way editing.
 
-It understands a structured comment format:
-
-```java
-// TODO [tag] (priority) description
-// FIXME [auth] (high) token refresh races on logout
-```
+<p align="center">
+  <img src="assets/lifecycle.svg" alt="Scan comments, list them, edit inline, then complete with a DONE stamp" width="840">
+</p>
 
 ## Features
 
@@ -36,7 +35,17 @@ It understands a structured comment format:
   *Settings > Editor > TODO > Reset to Defaults*.)
 - **Auto-refresh** as you edit files.
 
+<p align="center">
+  <img src="assets/editing-flow.svg" alt="Edit a TODO in the tool window and the source comment is rewritten; edit the comment and the list refreshes" width="780">
+</p>
+
 ## Comment format
+
+TODO Manager understands a structured comment format — each part is colorized in the editor:
+
+<p align="center">
+  <img src="assets/comment-format.svg" alt="// TODO [tag] (priority) description, with each part colorized" width="720">
+</p>
 
 | Part | Syntax | Example | Notes |
 |------|--------|---------|-------|
@@ -47,6 +56,15 @@ It understands a structured comment format:
 
 Works in any comment the IDE recognizes — line comments (`//`, `#`, `--`), block comments
 (`/* */`, `<!-- -->`), and doc comments — across every supported language.
+
+## Colors
+
+Sensible defaults out of the box, all customizable under *Settings > Tools > TODO Manager*.
+Tag colors are assigned automatically from a palette (with per-tag overrides available).
+
+<p align="center">
+  <img src="assets/colors.svg" alt="Default keyword and priority colors" width="780">
+</p>
 
 ## Requirements
 
