@@ -21,9 +21,12 @@ import com.intellij.psi.PsiManager
 @Service(Service.Level.PROJECT)
 class TodoScannerService(private val project: Project) {
 
+    /** TODO comments found by the last scan. The general (code-free) todos are merged in by [items]. */
     @Volatile
-    var items: List<TodoItem> = emptyList()
-        private set
+    private var codeItems: List<TodoItem> = emptyList()
+
+    /** All items shown in the tool window: scanned code comments plus general (code-free) todos. */
+    val items: List<TodoItem> get() = codeItems + generalItems()
 
     /** Base directories covered by the last full scan, used to scope incremental refreshes. */
     @Volatile
@@ -32,17 +35,22 @@ class TodoScannerService(private val project: Project) {
     /** Listeners notified when items change. */
     private val listeners = mutableListOf<() -> Unit>()
 
+    private val generalStore get() = GeneralTodoStore.getInstance(project)
+
     fun addChangeListener(listener: () -> Unit) {
         listeners.add(listener)
     }
 
+    private fun notifyListeners() {
+        listeners.forEach { it() }
+    }
+
     /** Rescans the entire project for TODO items. Call from a background thread. */
     fun refresh() {
-        val newItems = ReadAction.compute<List<TodoItem>, Throwable> {
+        codeItems = ReadAction.compute<List<TodoItem>, Throwable> {
             scanProject()
         }
-        items = newItems
-        listeners.forEach { it() }
+        notifyListeners()
     }
 
     /** Rescans a single file and merges results, respecting the current scan scope. */
@@ -50,9 +58,47 @@ class TodoScannerService(private val project: Project) {
         val fileItems = ReadAction.compute<List<TodoItem>, Throwable> {
             if (isInScope(virtualFile)) scanFile(virtualFile) else emptyList()
         }
-        val otherItems = items.filter { it.file != virtualFile }
-        items = otherItems + fileItems
-        listeners.forEach { it() }
+        val otherItems = codeItems.filter { it.file != virtualFile }
+        codeItems = otherItems + fileItems
+        notifyListeners()
+    }
+
+    /* ============ General (code-free) todos ============ */
+
+    fun addGeneralTodo(keyword: String, tag: String?, priority: String?, description: String) {
+        generalStore.add(keyword, tag, priority, description)
+        notifyListeners()
+    }
+
+    fun updateGeneralTodo(id: String, mutate: (GeneralTodoStore.Entry) -> Unit) {
+        generalStore.update(id, mutate)
+        notifyListeners()
+    }
+
+    fun removeGeneralTodo(id: String) {
+        generalStore.remove(id)
+        notifyListeners()
+    }
+
+    /** Converts the stored general todos into [TodoItem]s for display. */
+    private fun generalItems(): List<TodoItem> = generalStore.entries.map { e ->
+        TodoItem(
+            keyword = e.keyword,
+            tag = e.tag,
+            priority = e.priority,
+            description = e.description,
+            file = null,
+            line = 0,
+            textRange = null,
+            matchRange = null,
+            originalText = e.description,
+            isBlockComment = false,
+            source = TodoSource.GENERAL,
+            generalId = e.id,
+            done = e.done,
+            doneBy = e.doneBy,
+            doneAt = e.doneAt,
+        )
     }
 
     private fun scanProject(): List<TodoItem> {

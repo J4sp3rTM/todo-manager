@@ -18,6 +18,13 @@ It understands a structured comment format:
   and the source comment is rewritten in place, with full undo support.
 - **Editor highlighting** — keywords, tags, priorities, description text, and comment delimiters are colorized right in the editor.
 - **Add & complete** — insert new TODOs at the caret position, or mark existing ones done.
+  Completing a TODO stamps it with your git user name and the date
+  (e.g. `DONE fix login (done by J4sp3r on 2026-06-29)`).
+- **Done items, kept in view** — completed TODOs stay in the list, struck through and labelled
+  with who finished them and when. Toggle them on or off with **Show done** in the toolbar.
+- **General (code-free) TODOs** — track items that aren't tied to any comment. Check
+  *General TODO* in the New TODO dialog; they're stored with the project and shown alongside
+  code TODOs.
 - **Fully configurable** — customize keywords and all colors under *Settings > Tools > TODO Manager*.
 - **Auto-refresh** as you edit files.
 

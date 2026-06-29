@@ -18,6 +18,12 @@ class TodoManagerSettings : PersistentStateComponent<TodoManagerSettings.State> 
         var groupBy: String = "FILE",
         var enabled: Boolean = true,
 
+        /** Keyword that marks a TODO as completed (written by "Mark as Done", scanned back as done). */
+        var doneKeyword: String = "DONE",
+
+        /** Whether completed (DONE) items are shown in the tool window. Toggled from the toolbar. */
+        var showDoneItems: Boolean = true,
+
         /** Keyword → hex color, e.g. "TODO" → "#42A5F5" */
         @MapAnnotation(surroundWithTag = false)
         var keywordColors: MutableMap<String, String> = defaultKeywordColors(),

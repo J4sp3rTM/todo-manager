@@ -2,6 +2,7 @@ package io.github.j4sp3rtm.todomanager
 
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.invokeLater
+import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.ComboBoxWithWidePopup
@@ -27,6 +28,11 @@ import javax.swing.tree.TreePath
  * Contains a toolbar and a tree view of all TODO items.
  */
 class TodoToolWindowPanel(private val project: Project) : JPanel(BorderLayout()) {
+
+    private companion object {
+        /** Group-header label for general (code-free) todos when grouping by file. */
+        const val GENERAL_GROUP = "General"
+    }
 
     private val tree: Tree
     private val treeModel: DefaultTreeModel
@@ -68,8 +74,9 @@ class TodoToolWindowPanel(private val project: Project) : JPanel(BorderLayout())
             invokeLater { rebuildTree() }
         }
 
-        // Initial scan
+        // Initial scan, and warm the git-user cache so the first "Mark as Done" doesn't block the EDT.
         ApplicationManager.getApplication().executeOnPooledThread {
+            GitUser.userName(project)
             scannerService.refresh()
         }
     }
@@ -102,10 +109,19 @@ class TodoToolWindowPanel(private val project: Project) : JPanel(BorderLayout())
             addActionListener { showNewTodoDialog() }
         }
 
+        val showDoneCheckBox = JCheckBox("Show done", Config.SHOW_DONE).apply {
+            toolTipText = "Include completed (DONE) items in the list"
+            addActionListener {
+                Config.SHOW_DONE = isSelected
+                rebuildTree()
+            }
+        }
+
         toolbar.add(refreshButton)
         toolbar.add(JLabel("Group by:"))
         toolbar.add(groupByCombo)
         toolbar.add(addButton)
+        toolbar.add(showDoneCheckBox)
 
         return toolbar
     }
@@ -115,13 +131,15 @@ class TodoToolWindowPanel(private val project: Project) : JPanel(BorderLayout())
      */
     private fun rebuildTree() {
         rootNode.removeAllChildren()
-        val items = scannerService.items.sortedWith(compareBy({ it.file.path }, { it.line }))
+        val items = scannerService.items
+            .filter { Config.SHOW_DONE || !it.done }
+            .sortedWith(compareBy({ it.file?.path ?: "" }, { it.line }))
         val groupBy = Config.GROUP_BY
 
         val grouped: Map<String, List<TodoItem>> = when (groupBy) {
             "TAG" -> items.groupBy { it.tag ?: "(no tag)" }
             "PRIORITY" -> items.groupBy { it.priority?.replaceFirstChar { c -> c.uppercase() } ?: "(no priority)" }
-            else -> items.groupBy { it.file.name }
+            else -> items.groupBy { it.file?.name ?: GENERAL_GROUP }
         }
 
         val sortedKeys = if (groupBy == "PRIORITY") {
@@ -154,8 +172,9 @@ class TodoToolWindowPanel(private val project: Project) : JPanel(BorderLayout())
 
     private fun navigateToSelected() {
         val item = getSelectedItem() ?: return
-        val descriptor = OpenFileDescriptor(project, item.file, item.textRange.startOffset)
-        descriptor.navigate(true)
+        val file = item.file ?: return
+        val range = item.textRange ?: return
+        OpenFileDescriptor(project, file, range.startOffset).navigate(true)
     }
 
     private fun getSelectedItem(): TodoItem? {
@@ -169,10 +188,12 @@ class TodoToolWindowPanel(private val project: Project) : JPanel(BorderLayout())
         val item = getSelectedItem() ?: return
         val menu = JPopupMenu()
 
-        menu.add(JMenuItem("Go to Source").apply {
-            addActionListener { navigateToSelected() }
-        })
-        menu.addSeparator()
+        if (item.source == TodoSource.CODE) {
+            menu.add(JMenuItem("Go to Source").apply {
+                addActionListener { navigateToSelected() }
+            })
+            menu.addSeparator()
+        }
         menu.add(JMenuItem("Edit Description...").apply {
             addActionListener { editDescription(item) }
         })
@@ -181,9 +202,11 @@ class TodoToolWindowPanel(private val project: Project) : JPanel(BorderLayout())
         })
         menu.add(createPrioritySubMenu(item))
         menu.addSeparator()
-        menu.add(JMenuItem("Mark as Done").apply {
-            addActionListener { markDone(item) }
-        })
+        if (!item.done) {
+            menu.add(JMenuItem("Mark as Done").apply {
+                addActionListener { markDone(item) }
+            })
+        }
         menu.add(JMenuItem("Delete TODO").apply {
             addActionListener { deleteTodo(item) }
         })
@@ -197,8 +220,12 @@ class TodoToolWindowPanel(private val project: Project) : JPanel(BorderLayout())
                 val label = p?.replaceFirstChar { it.uppercase() } ?: "None"
                 add(JMenuItem(label).apply {
                     addActionListener {
-                        TodoEditor.setPriority(project, item, p)
-                        refreshAfterEdit(item)
+                        if (item.source == TodoSource.GENERAL) {
+                            scannerService.updateGeneralTodo(item.generalId!!) { it.priority = p }
+                        } else {
+                            TodoEditor.setPriority(project, item, p)
+                            refreshAfterEdit(item)
+                        }
                     }
                 })
             }
@@ -216,8 +243,12 @@ class TodoToolWindowPanel(private val project: Project) : JPanel(BorderLayout())
             item.description,
             null
         ) ?: return
-        TodoEditor.setDescription(project, item, newDesc)
-        refreshAfterEdit(item)
+        if (item.source == TodoSource.GENERAL) {
+            scannerService.updateGeneralTodo(item.generalId!!) { it.description = newDesc }
+        } else {
+            TodoEditor.setDescription(project, item, newDesc)
+            refreshAfterEdit(item)
+        }
     }
 
     private fun editTag(item: TodoItem) {
@@ -229,16 +260,40 @@ class TodoToolWindowPanel(private val project: Project) : JPanel(BorderLayout())
             item.tag ?: "",
             null
         ) ?: return
-        TodoEditor.setTag(project, item, newTag.ifBlank { null })
-        refreshAfterEdit(item)
+        if (item.source == TodoSource.GENERAL) {
+            scannerService.updateGeneralTodo(item.generalId!!) { it.tag = newTag.ifBlank { null } }
+        } else {
+            TodoEditor.setTag(project, item, newTag.ifBlank { null })
+            refreshAfterEdit(item)
+        }
     }
 
     private fun markDone(item: TodoItem) {
-        TodoEditor.markDone(project, item)
-        refreshAfterEdit(item)
+        if (item.source == TodoSource.GENERAL) {
+            scannerService.updateGeneralTodo(item.generalId!!) {
+                it.done = true
+                it.doneBy = GitUser.userName(project)
+                it.doneAt = java.time.LocalDate.now().toString()
+            }
+        } else {
+            TodoEditor.markDone(project, item)
+            refreshAfterEdit(item)
+        }
     }
 
     private fun deleteTodo(item: TodoItem) {
+        if (item.source == TodoSource.GENERAL) {
+            val ok = Messages.showYesNoDialog(
+                project,
+                "Delete this general TODO?",
+                "Delete TODO",
+                Messages.getQuestionIcon()
+            )
+            if (ok == Messages.YES) {
+                scannerService.removeGeneralTodo(item.generalId!!)
+            }
+            return
+        }
         val ok = Messages.showYesNoDialog(
             project,
             "Delete this TODO comment from the source file?",
@@ -253,21 +308,37 @@ class TodoToolWindowPanel(private val project: Project) : JPanel(BorderLayout())
 
     private fun showNewTodoDialog() {
         val dialog = NewTodoDialog(project)
-        if (dialog.showAndGet()) {
-            val keyword = dialog.keyword
-            val tag = dialog.tag.ifBlank { null }
-            val priority = dialog.priority.ifBlank { null }
-            val description = dialog.description
-            TodoEditor.insertNew(project, keyword, tag, priority, description)
-            ApplicationManager.getApplication().executeOnPooledThread {
-                scannerService.refresh()
-            }
+        if (!dialog.showAndGet()) return
+
+        val keyword = dialog.keyword
+        val tag = dialog.tag.ifBlank { null }
+        val priority = dialog.priority.ifBlank { null }
+        val description = dialog.description
+
+        if (dialog.isGeneral) {
+            scannerService.addGeneralTodo(keyword, tag, priority, description)
+            return
+        }
+
+        if (FileEditorManager.getInstance(project).selectedTextEditor == null) {
+            Messages.showInfoMessage(
+                project,
+                "Open a file and place the caret where the comment should go, " +
+                    "or check \"General TODO\" to store it without code.",
+                "No Active Editor"
+            )
+            return
+        }
+        TodoEditor.insertNew(project, keyword, tag, priority, description)
+        ApplicationManager.getApplication().executeOnPooledThread {
+            scannerService.refresh()
         }
     }
 
     private fun refreshAfterEdit(item: TodoItem) {
+        val file = item.file ?: return
         ApplicationManager.getApplication().executeOnPooledThread {
-            scannerService.refreshFile(item.file)
+            scannerService.refreshFile(file)
         }
     }
 }
@@ -279,6 +350,12 @@ data class GroupLabel(val name: String, val count: Int)
  * Custom tree cell renderer — shows colored badges for keywords and priorities.
  */
 class TodoCellRenderer : DefaultTreeCellRenderer() {
+
+    /** Off-screen label used to measure the pixel width of the struck-through portion. */
+    private val measureLabel = JLabel()
+    /** Pixel width of the strikethrough to draw (0 = none). Set per row in [getTreeCellRendererComponent]. */
+    private var strikeWidth = 0
+    private var strikeColor: java.awt.Color = java.awt.Color.GRAY
 
     init {
         // Remove the default opaque backgrounds that cause the light gray look
@@ -297,6 +374,7 @@ class TodoCellRenderer : DefaultTreeCellRenderer() {
             background = tree.background
             (comp as? JComponent)?.isOpaque = false
         }
+        strikeWidth = 0
         val node = value as? DefaultMutableTreeNode ?: return comp
         val obj = node.userObject
 
@@ -324,13 +402,40 @@ class TodoCellRenderer : DefaultTreeCellRenderer() {
                     val dColor = colorToHex(Config.descriptionColor())
                     parts.add("<font color='$dColor'>${obj.description}</font>")
                 }
-                val locationInfo = "${obj.file.name}:${obj.line + 1}"
-                text = "<html>${parts.joinToString(" ")} <font color='#888888'>— $locationInfo</font></html>"
+                val location = if (obj.source == TodoSource.GENERAL) "general" else "${obj.file?.name}:${obj.line + 1}"
+                val doneStamp = if (obj.done) "✓ done by ${obj.doneBy ?: "?"} on ${obj.doneAt ?: "?"}" else null
+                val trailing = when {
+                    doneStamp == null -> location
+                    obj.source == TodoSource.GENERAL -> doneStamp
+                    else -> "$location · $doneStamp"
+                }
+                val body = parts.joinToString(" ")
+                text = "<html>$body <font color='#888888'>— $trailing</font></html>"
                 icon = null
+                // Done items get a strikethrough drawn manually (in paintComponent) so the line sits
+                // at the cell's vertical center — Swing's HTML <strike> renders it low and uneven
+                // across mixed bold/non-bold runs.
+                if (obj.done) {
+                    measureLabel.font = font
+                    measureLabel.text = "<html>$body</html>"
+                    strikeWidth = measureLabel.preferredSize.width
+                    strikeColor = Config.descriptionColor()
+                }
             }
         }
 
         return comp
+    }
+
+    override fun paintComponent(g: java.awt.Graphics) {
+        super.paintComponent(g)
+        if (strikeWidth <= 0) return
+        // With no icon, text starts at the left inset; the line spans only the struck body, drawn
+        // through the vertical center of the (vertically centered) text.
+        val x0 = insets.left
+        val y = height / 2
+        g.color = strikeColor
+        g.drawLine(x0, y, x0 + strikeWidth, y)
     }
 
     private fun colorToHex(c: java.awt.Color): String =

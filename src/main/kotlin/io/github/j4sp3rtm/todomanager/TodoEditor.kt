@@ -30,13 +30,22 @@ object TodoEditor {
     }
 
     fun markDone(project: Project, item: TodoItem) {
-        rewriteComment(project, item, "DONE", item.tag, null, item.description)
+        val signed = appendSignature(item.description, GitUser.doneSignature(project))
+        rewriteComment(project, item, Config.DONE_KEYWORD, item.tag, null, signed)
+    }
+
+    /** Appends a completion stamp to a description, e.g. "fix login (done by Jasper on 2026-06-29)". */
+    private fun appendSignature(description: String, signature: String): String {
+        val base = description.trimEnd()
+        return if (base.isEmpty()) "($signature)" else "$base ($signature)"
     }
 
     fun delete(project: Project, item: TodoItem) {
         val document = getDocument(item) ?: return
+        val matchRange = item.matchRange ?: return
+        val textRange = item.textRange ?: return
         WriteCommandAction.runWriteCommandAction(project, "Delete TODO", null, {
-            val matchStart = item.matchRange.startOffset
+            val matchStart = matchRange.startOffset
             val lineNum = document.getLineNumber(matchStart)
             val lineStart = document.getLineStartOffset(lineNum)
             val lineEnd = document.getLineEndOffset(lineNum)
@@ -44,7 +53,7 @@ object TodoEditor {
             if (!item.isBlockComment) {
                 // Line comment: delete the whole line if the comment is the only content
                 val commentText = document.getText(com.intellij.openapi.util.TextRange(
-                    item.textRange.startOffset, item.textRange.endOffset
+                    textRange.startOffset, textRange.endOffset
                 )).trim()
                 val lineText = document.getText(
                     com.intellij.openapi.util.TextRange(lineStart, lineEnd)
@@ -54,7 +63,7 @@ object TodoEditor {
                     val deleteEnd = if (lineEnd < document.textLength) lineEnd + 1 else lineEnd
                     document.deleteString(lineStart, deleteEnd)
                 } else {
-                    document.deleteString(item.textRange.startOffset, item.textRange.endOffset)
+                    document.deleteString(textRange.startOffset, textRange.endOffset)
                 }
             } else {
                 // Block/doc comment: delete the line containing this TODO match
@@ -114,10 +123,11 @@ object TodoEditor {
         description: String
     ) {
         val document = getDocument(item) ?: return
+        val matchRange = item.matchRange ?: return
         val newText = buildCommentText(keyword, tag, priority, description)
 
         WriteCommandAction.runWriteCommandAction(project, "Edit TODO", null, {
-            document.replaceString(item.matchRange.startOffset, item.matchRange.endOffset, newText)
+            document.replaceString(matchRange.startOffset, matchRange.endOffset, newText)
         })
     }
 
@@ -133,7 +143,8 @@ object TodoEditor {
     }
 
     private fun getDocument(item: TodoItem): Document? {
-        return FileDocumentManager.getInstance().getDocument(item.file)
+        val file = item.file ?: return null
+        return FileDocumentManager.getInstance().getDocument(file)
     }
 
     private fun getLineIndent(document: Document, lineNum: Int): String {

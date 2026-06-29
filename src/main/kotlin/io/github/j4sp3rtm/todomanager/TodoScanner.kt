@@ -18,9 +18,13 @@ import com.intellij.psi.PsiRecursiveElementWalkingVisitor
  */
 object TodoScanner {
 
+    /** Trailing completion stamp left by "Mark as Done", e.g. "(done by Jasper on 2026-06-29)". */
+    private val DONE_SIGNATURE = Regex("""\s*\(done by (.+?) on (\d{4}-\d{2}-\d{2})\)\s*$""")
+
     fun scan(file: PsiFile, document: Document?, virtualFile: VirtualFile?): List<TodoItem> {
         if (virtualFile == null) return emptyList()
-        val pattern = TodoPattern.build(Config.KEYWORDS)
+        // The done keyword is scanned too, so completed items can be shown (and filtered) in the panel.
+        val pattern = TodoPattern.build(Config.KEYWORDS + Config.DONE_KEYWORD)
         val items = mutableListOf<TodoItem>()
 
         file.accept(object : PsiRecursiveElementWalkingVisitor() {
@@ -68,6 +72,19 @@ object TodoScanner {
             }
             description = description.trim()
 
+            // For completed items, lift the "(done by X on DATE)" stamp out of the description so it
+            // renders the same way as a done general todo (clean text + a "✓ done by …" badge).
+            val isDone = keyword.equals(Config.DONE_KEYWORD, ignoreCase = true)
+            var doneBy: String? = null
+            var doneAt: String? = null
+            if (isDone) {
+                DONE_SIGNATURE.find(description)?.let { sig ->
+                    doneBy = sig.groupValues[1]
+                    doneAt = sig.groupValues[2]
+                    description = description.removeRange(sig.range).trim()
+                }
+            }
+
             val matchRange = TextRange(matchStartAbs, matchEndAbs)
             val lineNumber = document?.getLineNumber(matchStartAbs) ?: 0
 
@@ -83,6 +100,9 @@ object TodoScanner {
                     matchRange = matchRange,
                     originalText = text.substring(match.range.first, matchEndAbs - elementStart),
                     isBlockComment = isBlock,
+                    done = isDone,
+                    doneBy = doneBy,
+                    doneAt = doneAt,
                 )
             )
         }

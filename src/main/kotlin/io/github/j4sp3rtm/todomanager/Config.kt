@@ -9,6 +9,10 @@ object Config {
     val KEYWORDS: List<String> get() = settings.keywords
     val GROUP_BY: String get() = settings.groupBy
     val ENABLED: Boolean get() = settings.enabled
+    val DONE_KEYWORD: String get() = settings.doneKeyword
+    var SHOW_DONE: Boolean
+        get() = settings.showDoneItems
+        set(value) { settings.showDoneItems = value }
     val BOLD_KEYWORDS: Boolean get() = settings.boldKeywords
     val UNDERLINE_TAGS: Boolean get() = settings.underlineTags
 
