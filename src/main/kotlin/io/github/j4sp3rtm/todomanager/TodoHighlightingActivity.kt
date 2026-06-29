@@ -9,6 +9,7 @@ import com.intellij.openapi.editor.event.EditorFactoryListener
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.startup.ProjectActivity
+import com.intellij.psi.PsiDocumentManager
 import com.intellij.util.Alarm
 
 /**
@@ -38,7 +39,9 @@ class TodoHighlightingActivity : ProjectActivity {
             }
         }, project)
 
-        // Repaint affected editors after edits, debounced so typing stays responsive.
+        // Repaint affected editors after edits, debounced so typing stays responsive. The same
+        // debounced tick also rescans the edited file so the tool window list reflects TODOs added,
+        // changed, or removed live — without waiting for the file to be saved.
         factory.eventMulticaster.addDocumentListener(object : DocumentListener {
             override fun documentChanged(event: DocumentEvent) {
                 val document = event.document
@@ -46,7 +49,19 @@ class TodoHighlightingActivity : ProjectActivity {
                 if (editors.isEmpty()) return
                 alarm.cancelAllRequests()
                 alarm.addRequest({
-                    if (!project.isDisposed) editors.forEach { TodoHighlightPainter.refresh(it) }
+                    if (project.isDisposed) return@addRequest
+                    editors.forEach { TodoHighlightPainter.refresh(it) }
+                    // Rescan for the tool window, but only once the document's PSI is committed: scanning
+                    // a file whose PSI is still catching up with an in-flight edit can trigger a PSI
+                    // reparse from a write-unsafe context. performWhenAllCommitted runs us back on the
+                    // EDT in a write-safe state, from which we hand the actual scan to a pooled thread.
+                    val file = FileDocumentManager.getInstance().getFile(document) ?: return@addRequest
+                    PsiDocumentManager.getInstance(project).performWhenAllCommitted {
+                        if (project.isDisposed) return@performWhenAllCommitted
+                        ApplicationManager.getApplication().executeOnPooledThread {
+                            TodoScannerService.getInstance(project).refreshFile(file)
+                        }
+                    }
                 }, REPAINT_DELAY_MS)
             }
         }, project)
