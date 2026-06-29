@@ -45,6 +45,15 @@ class TodoManagerSettings : PersistentStateComponent<TodoManagerSettings.State> 
         /** Whether completed (DONE) items are shown in the tool window. Toggled from the toolbar. */
         var showDoneItems: Boolean = true,
 
+        /**
+         * When true, group nodes in the tool window start collapsed. Newly appearing groups on a
+         * refresh also start collapsed (existing groups keep whatever state the user left them in).
+         */
+        var collapseByDefault: Boolean = true,
+
+        /** When true, the tool window's group order and the items within each group are reversed. */
+        var reverseSort: Boolean = false,
+
         /** Keyword → hex color, e.g. "TODO" → "#42A5F5" */
         @MapAnnotation(surroundWithTag = false)
         var keywordColors: MutableMap<String, String> = defaultKeywordColors(),

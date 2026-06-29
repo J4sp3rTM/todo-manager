@@ -117,11 +117,30 @@ class TodoToolWindowPanel(private val project: Project) : JPanel(BorderLayout())
             }
         }
 
+        val collapseCheckBox = JCheckBox("Collapse", Config.COLLAPSE_BY_DEFAULT).apply {
+            toolTipText = "Start groups collapsed (new groups on refresh also start collapsed)"
+            addActionListener {
+                Config.COLLAPSE_BY_DEFAULT = isSelected
+                // Apply immediately to what's on screen; the setting then governs new groups on refresh.
+                if (isSelected) collapseAllGroups() else expandAllGroups()
+            }
+        }
+
+        val reverseCheckBox = JCheckBox("Reverse", Config.REVERSE_SORT).apply {
+            toolTipText = "Reverse the group order and the items within each group"
+            addActionListener {
+                Config.REVERSE_SORT = isSelected
+                rebuildTree()
+            }
+        }
+
         toolbar.add(refreshButton)
         toolbar.add(JLabel("Group by:"))
         toolbar.add(groupByCombo)
         toolbar.add(addButton)
         toolbar.add(showDoneCheckBox)
+        toolbar.add(collapseCheckBox)
+        toolbar.add(reverseCheckBox)
 
         return toolbar
     }
@@ -130,6 +149,10 @@ class TodoToolWindowPanel(private val project: Project) : JPanel(BorderLayout())
      * Rebuilds the tree from the current scan results, grouped by the selected mode.
      */
     private fun rebuildTree() {
+        // Snapshot the on-screen group state before we tear the tree down, so a refresh can restore
+        // each group to how the user left it (and let brand-new groups fall back to the default).
+        val priorGroups = captureGroupState()
+
         rootNode.removeAllChildren()
         val items = scannerService.items
             .filter { Config.SHOW_DONE || !it.done }
@@ -142,15 +165,17 @@ class TodoToolWindowPanel(private val project: Project) : JPanel(BorderLayout())
             else -> items.groupBy { it.file?.name ?: GENERAL_GROUP }
         }
 
-        val sortedKeys = if (groupBy == "PRIORITY") {
+        var sortedKeys = if (groupBy == "PRIORITY") {
             val order = listOf("Critical", "High", "Medium", "Low", "(no priority)")
             grouped.keys.sortedBy { key -> order.indexOf(key).let { if (it == -1) order.size else it } }
         } else {
             grouped.keys.sorted()
         }
+        if (Config.REVERSE_SORT) sortedKeys = sortedKeys.reversed()
 
         for (groupName in sortedKeys) {
-            val groupItems = grouped[groupName] ?: continue
+            var groupItems = grouped[groupName] ?: continue
+            if (Config.REVERSE_SORT) groupItems = groupItems.reversed()
             val groupNode = DefaultMutableTreeNode(GroupLabel(groupName, groupItems.size))
             for (item in groupItems) {
                 groupNode.add(DefaultMutableTreeNode(item))
@@ -159,14 +184,56 @@ class TodoToolWindowPanel(private val project: Project) : JPanel(BorderLayout())
         }
 
         treeModel.reload()
-        expandAll()
+        restoreGroupState(priorGroups)
     }
 
-    private fun expandAll() {
-        var row = 0
-        while (row < tree.rowCount) {
-            tree.expandRow(row)
-            row++
+    /** A snapshot of the group nodes that existed, and which of those were expanded, keyed by name. */
+    private class GroupState(val present: Set<String>, val expanded: Set<String>)
+
+    /** Records, per group name, whether the group was present and whether it was expanded. */
+    private fun captureGroupState(): GroupState {
+        val present = mutableSetOf<String>()
+        val expanded = mutableSetOf<String>()
+        for (i in 0 until rootNode.childCount) {
+            val node = rootNode.getChildAt(i) as? DefaultMutableTreeNode ?: continue
+            val name = (node.userObject as? GroupLabel)?.name ?: continue
+            present.add(name)
+            if (tree.isExpanded(TreePath(node.path))) expanded.add(name)
+        }
+        return GroupState(present, expanded)
+    }
+
+    /**
+     * Restores each group to its prior expand/collapse state. Groups that didn't exist before (e.g.
+     * a newly added file, or after switching the grouping mode) use [Config.COLLAPSE_BY_DEFAULT].
+     */
+    private fun restoreGroupState(prior: GroupState) {
+        for (i in 0 until rootNode.childCount) {
+            val node = rootNode.getChildAt(i) as? DefaultMutableTreeNode ?: continue
+            val name = (node.userObject as? GroupLabel)?.name ?: continue
+            val path = TreePath(node.path)
+            val expand = when (name) {
+                in prior.expanded -> true
+                in prior.present -> false          // existed and was collapsed → stay collapsed
+                else -> !Config.COLLAPSE_BY_DEFAULT // new group → default
+            }
+            if (expand) tree.expandPath(path) else tree.collapsePath(path)
+        }
+    }
+
+    /** Expands every group node (used when the user turns "Collapse" off). */
+    private fun expandAllGroups() {
+        for (i in 0 until rootNode.childCount) {
+            val node = rootNode.getChildAt(i) as? DefaultMutableTreeNode ?: continue
+            tree.expandPath(TreePath(node.path))
+        }
+    }
+
+    /** Collapses every group node (used when the user turns "Collapse" on). */
+    private fun collapseAllGroups() {
+        for (i in 0 until rootNode.childCount) {
+            val node = rootNode.getChildAt(i) as? DefaultMutableTreeNode ?: continue
+            tree.collapsePath(TreePath(node.path))
         }
     }
 

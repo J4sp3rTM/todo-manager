@@ -32,6 +32,12 @@ object Config {
     var SHOW_DONE: Boolean
         get() = settings.showDoneItems
         set(value) { settings.showDoneItems = value }
+    var COLLAPSE_BY_DEFAULT: Boolean
+        get() = settings.collapseByDefault
+        set(value) { settings.collapseByDefault = value }
+    var REVERSE_SORT: Boolean
+        get() = settings.reverseSort
+        set(value) { settings.reverseSort = value }
     val BOLD_KEYWORDS: Boolean get() = settings.boldKeywords
     val UNDERLINE_TAGS: Boolean get() = settings.underlineTags
 
