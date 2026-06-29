@@ -79,6 +79,23 @@ class TodoScannerService(private val project: Project) {
     }
 
     /**
+     * Drops all cached items whose file lives at or under [path]. Used when a file or directory is
+     * deleted: the [VirtualFile] is already invalid by then, so we match on the captured path. A
+     * directory delete fires a single event, so removing the whole subtree here covers its children.
+     */
+    fun removeFilesUnder(path: String) {
+        val prefix = "$path/"
+        val remaining = codeItems.filter {
+            val p = it.file?.path ?: return@filter true
+            p != path && !p.startsWith(prefix)
+        }
+        if (remaining.size != codeItems.size) {
+            codeItems = remaining
+            notifyListeners()
+        }
+    }
+
+    /**
      * True if [virtualFile]'s PSI and document agree in length. Right after a file changes, the
      * document is reloaded before the PSI is reparsed, so PSI offsets can momentarily point past the
      * document end — scanning then would crash [com.intellij.openapi.editor.Document.getLineNumber].

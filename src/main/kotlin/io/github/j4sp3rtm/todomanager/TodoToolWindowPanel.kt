@@ -86,15 +86,6 @@ class TodoToolWindowPanel(private val project: Project) : JPanel(BorderLayout())
             border = JBUI.Borders.customLineBottom(JBColor.border())
         }
 
-        val refreshButton = JButton("Refresh").apply {
-            toolTipText = "Rescan project for TODOs"
-            addActionListener {
-                ApplicationManager.getApplication().executeOnPooledThread {
-                    scannerService.refresh()
-                }
-            }
-        }
-
         val groupByCombo = ComboBoxWithWidePopup(arrayOf("FILE", "TAG", "PRIORITY")).apply {
             selectedItem = Config.GROUP_BY
             toolTipText = "Group items by"
@@ -134,7 +125,6 @@ class TodoToolWindowPanel(private val project: Project) : JPanel(BorderLayout())
             }
         }
 
-        toolbar.add(refreshButton)
         toolbar.add(JLabel("Group by:"))
         toolbar.add(groupByCombo)
         toolbar.add(addButton)
