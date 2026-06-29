@@ -66,3 +66,11 @@ intellijPlatform {
         )
     }
 }
+intellijPlatformTesting {
+    runIde {
+        register("runWebStorm") {
+            type = org.jetbrains.intellij.platform.gradle.IntelliJPlatformType.WebStorm
+            version = "2025.1.1"
+        }
+    }
+}
