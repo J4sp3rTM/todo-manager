@@ -41,10 +41,10 @@ object TodoEditor {
     }
 
     fun delete(project: Project, item: TodoItem) {
-        val document = getDocument(item) ?: return
-        val matchRange = item.matchRange ?: return
-        val textRange = item.textRange ?: return
         WriteCommandAction.runWriteCommandAction(project, "Delete TODO", null, {
+            val document = getDocument(item) ?: return@runWriteCommandAction
+            val matchRange = item.matchRange ?: return@runWriteCommandAction
+            val textRange = item.textRange ?: return@runWriteCommandAction
             val matchStart = matchRange.startOffset
             val lineNum = document.getLineNumber(matchStart)
             val lineStart = document.getLineStartOffset(lineNum)
@@ -123,11 +123,10 @@ object TodoEditor {
         priority: String?,
         description: String
     ) {
-        val document = getDocument(item) ?: return
-        val matchRange = item.matchRange ?: return
-        val newText = buildCommentText(keyword, tag, priority, description)
-
         WriteCommandAction.runWriteCommandAction(project, "Edit TODO", null, {
+            val document = getDocument(item) ?: return@runWriteCommandAction
+            val matchRange = item.matchRange ?: return@runWriteCommandAction
+            val newText = buildCommentText(keyword, tag, priority, description)
             document.replaceString(matchRange.startOffset, matchRange.endOffset, newText)
         })
     }
