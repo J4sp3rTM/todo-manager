@@ -37,6 +37,20 @@
     <depends>com.intellij.modules.platform</depends>
 
     <change-notes><![CDATA[
+        <h3>1.5.0</h3>
+        <ul>
+            <li><b>Scans the whole project by default</b> — TODOs in folders with any name (and their
+                sub-folders) are now picked up, instead of only auto-detected source directories.
+                Excluded and IDE-ignored folders are still skipped, and source-only scanning can be
+                re-enabled in settings.</li>
+            <li><b>Empty-state guidance</b> — when there is nothing to show, the tool window now says so;
+                if scanning is limited to source directories but none exist, it offers a link straight
+                into the settings to add one.</li>
+            <li><b>Fix</b> — no longer throws a <i>Read access is allowed from inside read-action only</i>
+                error when marking a TODO as done or deleting it.</li>
+            <li><b>Fix</b> — the settings page now scrolls with the mouse wheel, not only the scrollbar.</li>
+        </ul>
+
         <h3>1.4.0</h3>
         <ul>
             <li><b>Group by keyword</b> — a new <i>Keyword</i> option in the <i>Group by</i> menu.</li>
