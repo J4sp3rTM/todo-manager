@@ -4,20 +4,25 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.invokeLater
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
+import com.intellij.openapi.options.ShowSettingsUtil
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.ComboBoxWithWidePopup
 import com.intellij.openapi.ui.Messages
 import com.intellij.ui.JBColor
-import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.treeStructure.Tree
 import com.intellij.util.ui.JBUI
 import java.awt.BorderLayout
+import java.awt.CardLayout
 import java.awt.Component
+import java.awt.Cursor
 import java.awt.FlowLayout
+import java.awt.GridBagConstraints
+import java.awt.GridBagLayout
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
 import javax.swing.*
+import javax.swing.event.HyperlinkEvent
 import javax.swing.tree.DefaultMutableTreeNode
 import javax.swing.tree.DefaultTreeCellRenderer
 import javax.swing.tree.DefaultTreeModel
@@ -32,12 +37,24 @@ class TodoToolWindowPanel(private val project: Project) : JPanel(BorderLayout())
     private companion object {
         /** Group-header label for general (code-free) todos when grouping by file. */
         const val GENERAL_GROUP = "General"
+        /** CardLayout keys for the center area. */
+        const val CARD_TREE = "tree"
+        const val CARD_EMPTY = "empty"
     }
 
     private val tree: Tree
     private val treeModel: DefaultTreeModel
     private val rootNode = DefaultMutableTreeNode("TODOs")
     private val scannerService = TodoScannerService.getInstance(project)
+
+    /** Center swaps between the populated tree and a centered empty-state message via [centerLayout]. */
+    private val centerLayout = CardLayout()
+    private val centerPanel = JPanel(centerLayout)
+    /**
+     * Empty-state message shown in place of the tree. An HTML editor pane (not a label/link) so the
+     * text wraps onto multiple lines as the tool window narrows, while keeping the settings link clickable.
+     */
+    private val emptyStatePane = JEditorPane()
 
     init {
         treeModel = DefaultTreeModel(rootNode)
@@ -67,7 +84,9 @@ class TodoToolWindowPanel(private val project: Project) : JPanel(BorderLayout())
         })
 
         add(createToolbar(), BorderLayout.NORTH)
-        add(JBScrollPane(tree), BorderLayout.CENTER)
+        centerPanel.add(JBScrollPane(tree), CARD_TREE)
+        centerPanel.add(createEmptyStateCard(), CARD_EMPTY)
+        add(centerPanel, BorderLayout.CENTER)
 
         // Listen for scan results
         scannerService.addChangeListener {
@@ -151,9 +170,54 @@ class TodoToolWindowPanel(private val project: Project) : JPanel(BorderLayout())
     }
 
     /**
+     * The "nothing to show" card shown in place of the tree when it is empty. The HTML pane fills the
+     * available width (so its text wraps when the tool window narrows) and is centered vertically; the
+     * "Open settings" link, when present, navigates into the plugin's settings.
+     */
+    private fun createEmptyStateCard(): JPanel {
+        emptyStatePane.apply {
+            contentType = "text/html"
+            isEditable = false
+            isOpaque = false
+            // Without this the HTMLEditorKit falls back to its serif default; honoring display
+            // properties makes the HTML use the component's (IDE label) font instead.
+            putClientProperty(JEditorPane.HONOR_DISPLAY_PROPERTIES, true)
+            font = JBUI.Fonts.label()
+            border = JBUI.Borders.empty(8, 16)
+            // Behave like a static message, not a text field: no focusable caret bar, no I-beam,
+            // no text selection. The hyperlink still works (it activates on click regardless of focus).
+            isFocusable = false
+            cursor = Cursor.getDefaultCursor()
+            highlighter = null
+            addHyperlinkListener { e ->
+                if (e.eventType == HyperlinkEvent.EventType.ACTIVATED) {
+                    ShowSettingsUtil.getInstance().showSettingsDialog(project, "TODO Manager")
+                }
+            }
+        }
+        return JPanel(GridBagLayout()).apply {
+            isOpaque = false
+            // Fill horizontally so the pane gets the full width to wrap into; weighty 0 keeps it
+            // vertically centered in the card.
+            add(emptyStatePane, GridBagConstraints().apply {
+                fill = GridBagConstraints.HORIZONTAL
+                weightx = 1.0
+            })
+        }
+    }
+
+    /** Wraps [body] in centered, theme-gray HTML for the empty-state pane (no fixed width → it wraps). */
+    private fun emptyStateHtml(body: String): String {
+        val g = JBColor.GRAY
+        val gray = String.format("#%02X%02X%02X", g.red, g.green, g.blue)
+        return "<html><body style='text-align:center; color:$gray'>$body</body></html>"
+    }
+
+    /**
      * Rebuilds the tree from the current scan results, grouped by the selected mode.
      */
     private fun rebuildTree() {
+
         // Snapshot the on-screen group state before we tear the tree down, so a refresh can restore
         // each group to how the user left it (and let brand-new groups fall back to the default).
         val priorGroups = captureGroupState()
@@ -193,6 +257,23 @@ class TodoToolWindowPanel(private val project: Project) : JPanel(BorderLayout())
 
         treeModel.reload()
         restoreGroupState(priorGroups)
+        updateEmptyState(items.isEmpty())
+    }
+
+    /** Shows the tree, or a centered empty-state message (settings link when no source dir was found). */
+    private fun updateEmptyState(isEmpty: Boolean) {
+        if (!isEmpty) {
+            centerLayout.show(centerPanel, CARD_TREE)
+            return
+        }
+        val body = if (scannerService.noSourceDirFound) {
+            "No source folder found — nothing is scanned. " +
+                "<a href='settings'>Open settings</a> to add one or scan the whole project."
+        } else {
+            "No TODOs to show"
+        }
+        emptyStatePane.text = emptyStateHtml(body)
+        centerLayout.show(centerPanel, CARD_EMPTY)
     }
 
     /** A snapshot of the group nodes that existed, and which of those were expanded, keyed by name. */

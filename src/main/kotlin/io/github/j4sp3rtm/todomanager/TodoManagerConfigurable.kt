@@ -4,6 +4,7 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.options.Configurable
 import com.intellij.openapi.project.ProjectManager
 import com.intellij.ui.ColorPanel
+import com.intellij.ui.components.JBScrollPane
 import java.awt.Color
 import java.awt.Dimension
 import javax.swing.*
@@ -231,9 +232,11 @@ class TodoManagerConfigurable : Configurable {
             add(Box.createVerticalGlue())
         }
 
-        return JScrollPane(panel).apply {
+        return JBScrollPane(panel).apply {
             border = null
             verticalScrollBar.unitIncrement = 16
+            horizontalScrollBarPolicy = JBScrollPane.HORIZONTAL_SCROLLBAR_NEVER
+            isWheelScrollingEnabled = true
         }
     }
 

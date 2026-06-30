@@ -93,8 +93,12 @@ class TodoManagerSettings : PersistentStateComponent<TodoManagerSettings.State> 
         /**
          * When true, scanning is restricted to detected source directories (see [sourceDirNames])
          * when any exist under a content root; otherwise the whole content root is scanned.
+         *
+         * Off by default: scanning the whole content root (minus excluded/junk folders and IDE
+         * excludes) covers projects whose code lives in arbitrarily named folders, so a parent and
+         * all of its sub-folders are picked up without having to register each as a source root.
          */
-        var limitToSourceDirs: Boolean = true,
+        var limitToSourceDirs: Boolean = false,
 
         /** When true, skip folders the IDE marks excluded and files belonging to libraries. */
         var respectIdeExcludes: Boolean = true,

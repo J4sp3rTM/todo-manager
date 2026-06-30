@@ -33,6 +33,15 @@ class TodoScannerService(private val project: Project) {
     @Volatile
     private var scanBases: List<VirtualFile> = emptyList()
 
+    /**
+     * True when source-dir limiting is on but no source directory was found, so the scan silently
+     * fell back to whole content roots. The tool window surfaces this so the user can either add a
+     * source folder or turn the limit off. Null/false when limiting is off or a source dir was found.
+     */
+    @Volatile
+    var noSourceDirFound: Boolean = false
+        private set
+
     /** Listeners notified when items change. */
     private val listeners = mutableListOf<() -> Unit>()
 
@@ -151,9 +160,16 @@ class TodoScannerService(private val project: Project) {
 
         val bases = mutableListOf<VirtualFile>()
         val allItems = mutableListOf<TodoItem>()
-        for (root in ProjectRootManager.getInstance(project).contentRoots) {
+        var anySourceDirFound = false
+        val roots = ProjectRootManager.getInstance(project).contentRoots
+        for (root in roots) {
             val rootBases = if (Config.LIMIT_TO_SOURCE_DIRS) {
-                findSourceDirs(root, sourceNames, excludedNames, fileIndex).ifEmpty { listOf(root) }
+                // Limiting is strict: with no source dir under this root, scan nothing here (rather
+                // than silently falling back to the whole root) so the empty result matches the
+                // "add a source folder" banner the tool window shows.
+                val sourceDirs = findSourceDirs(root, sourceNames, excludedNames, fileIndex)
+                if (sourceDirs.isNotEmpty()) anySourceDirFound = true
+                sourceDirs
             } else {
                 listOf(root)
             }
@@ -165,6 +181,7 @@ class TodoScannerService(private val project: Project) {
             }
         }
         scanBases = bases
+        noSourceDirFound = Config.LIMIT_TO_SOURCE_DIRS && roots.isNotEmpty() && !anySourceDirFound
         return allItems
     }
 
