@@ -5,7 +5,7 @@ plugins {
 
 group = "io.github.j4sp3rtm"
 // Overridable from CI via -PpluginVersion=<x> (the release workflow derives it from the git tag).
-version = (findProperty("pluginVersion") as String?) ?: "1.5.0"
+version = (findProperty("pluginVersion") as String?) ?: "1.6.0"
 
 repositories {
     mavenCentral()
@@ -73,4 +73,18 @@ intellijPlatformTesting {
             version = "2025.1.1"
         }
     }
+}
+
+// Wipes the sandbox `config` directory (settings + PropertiesComponent flags such as the
+// onboarding "shown" flag) while keeping `system/` caches so startup stays fast. Lets you
+// re-test first-run behavior repeatedly. Run with:  ./gradlew runIde -PfreshSandbox
+tasks.register<Delete>("wipeSandboxConfig") {
+    delete(
+        fileTree(layout.buildDirectory.dir("idea-sandbox")) {
+            include("**/config/**")
+        }
+    )
+}
+if (project.hasProperty("freshSandbox")) {
+    tasks.named("runIde") { dependsOn("wipeSandboxConfig") }
 }

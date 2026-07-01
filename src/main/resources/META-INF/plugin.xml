@@ -37,6 +37,14 @@
     <depends>com.intellij.modules.platform</depends>
 
     <change-notes><![CDATA[
+        <h3>1.6.0</h3>
+        <ul>
+            <li><b>Getting-started tour</b> — a short, visual onboarding shown on first run: how markers
+                are highlighted, the <code>KEYWORD [tag] (priority) description</code> format, and where
+                the tool window lives. It can drop you straight into creating your first TODO.</li>
+            <li>Re-open the tour any time from <i>Help &gt; TODO Manager: Getting Started</i>.</li>
+        </ul>
+
         <h3>1.5.0</h3>
         <ul>
             <li><b>Scans the whole project by default</b> — TODOs in folders with any name (and their
@@ -147,7 +155,22 @@
              code-insight highlighting, e.g. loose Java/Kotlin files outside a source root. -->
         <postStartupActivity
             implementation="io.github.j4sp3rtm.todomanager.TodoHighlightingActivity"/>
+
+        <!-- Shows the first-run onboarding tour once per installation. -->
+        <postStartupActivity
+            implementation="io.github.j4sp3rtm.todomanager.OnboardingActivity"/>
     </extensions>
+
+    <actions>
+        <!-- Lets users re-open the onboarding tour any time. -->
+        <action
+            id="io.github.j4sp3rtm.todomanager.ShowOnboarding"
+            class="io.github.j4sp3rtm.todomanager.ShowOnboardingAction"
+            text="TODO Manager: Getting Started"
+            description="Show the TODO Manager onboarding tour">
+            <add-to-group group-id="HelpMenu" anchor="last"/>
+        </action>
+    </actions>
 
     <projectListeners>
         <listener
