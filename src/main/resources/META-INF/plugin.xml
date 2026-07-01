@@ -37,6 +37,14 @@
     <depends>com.intellij.modules.platform</depends>
 
     <change-notes><![CDATA[
+        <h3>1.6.1</h3>
+        <ul>
+            <li><b>Fix</b> — the getting-started tour is now offered through a first-run notification
+                instead of opening automatically as a dialog, so it never interrupts startup (and no
+                longer blocks automated IDE/plugin-install checks). Click <i>Start tour</i> in the
+                notification, or open it any time from <i>Help &gt; TODO Manager: Getting Started</i>.</li>
+        </ul>
+
         <h3>1.6.0</h3>
         <ul>
             <li><b>Getting-started tour</b> — a short, visual onboarding shown on first run: how markers
@@ -156,9 +164,14 @@
         <postStartupActivity
             implementation="io.github.j4sp3rtm.todomanager.TodoHighlightingActivity"/>
 
-        <!-- Shows the first-run onboarding tour once per installation. -->
+        <!-- Invites the user into the onboarding tour once per installation (non-modal). -->
         <postStartupActivity
             implementation="io.github.j4sp3rtm.todomanager.OnboardingActivity"/>
+
+        <!-- Notification group for the first-run onboarding invitation. -->
+        <notificationGroup
+            id="TODO Manager Onboarding"
+            displayType="STICKY_BALLOON"/>
     </extensions>
 
     <actions>
