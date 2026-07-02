@@ -1,13 +1,20 @@
 package io.github.j4sp3rtm.todomanager
 
+import com.intellij.ide.ui.UISettings
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.invokeLater
+import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileEditor.FileEditorManager
+import com.intellij.openapi.fileEditor.FileEditorManagerKeys
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.options.ShowSettingsUtil
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.project.guessProjectDir
 import com.intellij.openapi.ui.ComboBoxWithWidePopup
 import com.intellij.openapi.ui.Messages
+import com.intellij.openapi.vfs.VfsUtilCore
+import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.ui.ClientProperty
 import com.intellij.ui.JBColor
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.treeStructure.Tree
@@ -47,6 +54,9 @@ class TodoToolWindowPanel(private val project: Project) : JPanel(BorderLayout())
     private val rootNode = DefaultMutableTreeNode("TODOs")
     private val scannerService = TodoScannerService.getInstance(project)
 
+    /** Project root used to render project-relative paths; cached since it rarely changes. */
+    private val projectBaseDir: VirtualFile? = project.guessProjectDir()
+
     /** Center swaps between the populated tree and a centered empty-state message via [centerLayout]. */
     private val centerLayout = CardLayout()
     private val centerPanel = JPanel(centerLayout)
@@ -58,17 +68,41 @@ class TodoToolWindowPanel(private val project: Project) : JPanel(BorderLayout())
 
     init {
         treeModel = DefaultTreeModel(rootNode)
-        tree = Tree(treeModel).apply {
+        tree = object : Tree(treeModel) {
+            // Hover tooltip: the path of the item under the cursor (code items only), formatted per
+            // the tooltip path-display setting. Can be turned off entirely in the settings.
+            override fun getToolTipText(e: MouseEvent): String? {
+                if (!Config.SHOW_ROW_TOOLTIP) return null
+                val file = itemAt(e.x, e.y)?.file ?: return null
+                return when (Config.TOOLTIP_PATH_DISPLAY) {
+                    "ABSOLUTE" -> file.path
+                    "NAME" -> file.name
+                    else -> projectRelativePath(file)
+                }
+            }
+        }.apply {
             isRootVisible = false
             showsRootHandles = true
-            cellRenderer = TodoCellRenderer()
+            cellRenderer = TodoCellRenderer(projectBaseDir)
         }
+        ToolTipManager.sharedInstance().registerComponent(tree)
+        // Mark navigations that originate from this tree as preview-eligible (the same mechanism the
+        // Project View uses): with focus in the tree and requestFocus=false, navigate() then reuses
+        // the editor's native preview tab — swapping the file into the same tab with no tab churn.
+        // Only kicks in when the IDE's preview-tab option is on; harmless otherwise.
+        ClientProperty.put(tree, FileEditorManagerKeys.OPEN_IN_PREVIEW_TAB, true)
 
-        // Double-click → navigate to source
+        // Double-click → open a permanent tab; single-click → preview tab when that setting is on.
         tree.addMouseListener(object : MouseAdapter() {
             override fun mouseClicked(e: MouseEvent) {
+                if (!SwingUtilities.isLeftMouseButton(e)) return
                 if (e.clickCount == 2) {
+                    // Deliberate permanent open. The first click of this double-click already
+                    // previewed the file — stop tracking it so a later single-click can't close it.
+                    previewTracker.setPreview(null)
                     navigateToSelected()
+                } else if (e.clickCount == 1 && Config.PREVIEW_ON_SINGLE_CLICK) {
+                    itemAt(e.x, e.y)?.let { previewItem(it) }
                 }
             }
 
@@ -333,6 +367,67 @@ class TodoToolWindowPanel(private val project: Project) : JPanel(BorderLayout())
         OpenFileDescriptor(project, file, range.startOffset).navigate(true)
     }
 
+    /** Tracks the file shown via single-click preview; also drives the "Preview:" tab title. */
+    private val previewTracker = TodoPreviewTracker.getInstance(project)
+
+    /**
+     * Single-click navigation into a preview tab, without stealing focus from the tool window.
+     *
+     * Preferred path: the editor's native preview tab. Because the tree carries the
+     * [FileEditorManagerKeys.OPEN_IN_PREVIEW_TAB] client property, a focus-less navigate() from it
+     * swaps the file into the one reusable preview tab in place — no tabs appearing or vanishing.
+     * That requires the IDE's "Open files in preview tab" option, which enabling our setting turns
+     * on (see [TodoManagerConfigurable.apply]).
+     *
+     * Fallback (IDE option off, e.g. the user disabled it by hand): emulate the behavior by closing
+     * the previously previewed tab ourselves — never one the user had open or has edited.
+     */
+    private fun previewItem(item: TodoItem) {
+        val file = item.file ?: return
+        val offset = item.textRange?.startOffset ?: 0
+
+        if (UISettings.getInstance().openInPreviewTabIfPossible) {
+            OpenFileDescriptor(project, file, offset).navigate(false)
+            previewTracker.setPreview(file)
+            return
+        }
+
+        val manager = FileEditorManager.getInstance(project)
+        val previous = previewTracker.file
+        val alreadyOpen = manager.isFileOpen(file)
+
+        OpenFileDescriptor(project, file, offset).navigate(false)
+
+        // Replace the previous preview: close it only if it's a different, still-open, unedited file
+        // that we opened for preview (never a tab the user had open themselves).
+        if (previous != null && previous != file && manager.isFileOpen(previous) &&
+            !FileDocumentManager.getInstance().isFileModified(previous)
+        ) {
+            manager.closeFile(previous)
+        }
+        // Track the file so the next preview replaces it. `alreadyOpen` with `file == previous`
+        // means WE opened it (a repeat click into the same file) — keep tracking it; only a file
+        // the user had open before any preview is left untracked so we never auto-close their tab.
+        previewTracker.setPreview(when {
+            !alreadyOpen -> file
+            file == previous -> file
+            else -> null
+        })
+    }
+
+    /** The [TodoItem] at the given tree coordinates, or null if the row is a group header or empty. */
+    private fun itemAt(x: Int, y: Int): TodoItem? {
+        val path = tree.getPathForLocation(x, y) ?: return null
+        val node = path.lastPathComponent as? DefaultMutableTreeNode ?: return null
+        return node.userObject as? TodoItem
+    }
+
+    /** The path of [file] relative to the project root, falling back to its absolute path. */
+    private fun projectRelativePath(file: VirtualFile): String {
+        val base = projectBaseDir ?: return file.path
+        return VfsUtilCore.getRelativePath(file, base) ?: file.path
+    }
+
     private fun getSelectedItem(): TodoItem? {
         val node = tree.lastSelectedPathComponent as? DefaultMutableTreeNode ?: return null
         return node.userObject as? TodoItem
@@ -505,7 +600,7 @@ data class GroupLabel(val name: String, val count: Int)
 /**
  * Custom tree cell renderer — shows colored badges for keywords and priorities.
  */
-class TodoCellRenderer : DefaultTreeCellRenderer() {
+class TodoCellRenderer(private val projectBaseDir: VirtualFile?) : DefaultTreeCellRenderer() {
 
     /** Off-screen label used to measure the pixel width of the struck-through portion. */
     private val measureLabel = JLabel()
@@ -558,7 +653,7 @@ class TodoCellRenderer : DefaultTreeCellRenderer() {
                     val dColor = colorToHex(Config.descriptionColor())
                     parts.add("<font color='$dColor'>${obj.description}</font>")
                 }
-                val location = if (obj.source == TodoSource.GENERAL) "general" else "${obj.file?.name}:${obj.line + 1}"
+                val location = if (obj.source == TodoSource.GENERAL) "general" else locationLabel(obj)
                 val doneStamp = if (obj.done) "✓ done by ${obj.doneBy ?: "?"} on ${obj.doneAt ?: "?"}" else null
                 val trailing = when {
                     doneStamp == null -> location
@@ -592,6 +687,22 @@ class TodoCellRenderer : DefaultTreeCellRenderer() {
         val y = height / 2
         g.color = strikeColor
         g.drawLine(x0, y, x0 + strikeWidth, y)
+    }
+
+    /** The trailing "file:line" label for a code item, formatted per [Config.PATH_DISPLAY]. */
+    private fun locationLabel(item: TodoItem): String {
+        val file = item.file ?: return "general"
+        val name = when (Config.PATH_DISPLAY) {
+            "RELATIVE" -> relativePath(file)
+            "ABSOLUTE" -> file.path
+            else -> file.name
+        }
+        return "$name:${item.line + 1}"
+    }
+
+    private fun relativePath(file: VirtualFile): String {
+        val base = projectBaseDir ?: return file.path
+        return VfsUtilCore.getRelativePath(file, base) ?: file.path
     }
 
     private fun colorToHex(c: java.awt.Color): String =

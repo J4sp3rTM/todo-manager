@@ -1,5 +1,6 @@
 package io.github.j4sp3rtm.todomanager
 
+import com.intellij.ide.ui.UISettings
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.options.Configurable
 import com.intellij.openapi.project.ProjectManager
@@ -20,6 +21,10 @@ class TodoManagerConfigurable : Configurable {
     private var keywordCaseCombo: JComboBox<String>? = null
     private var keywordsAtLineStartCheckbox: JCheckBox? = null
     private var suppressIdeTodoCheckbox: JCheckBox? = null
+    private var pathDisplayCombo: JComboBox<String>? = null
+    private var tooltipPathDisplayCombo: JComboBox<String>? = null
+    private var showRowTooltipCheckbox: JCheckBox? = null
+    private var previewOnSingleClickCheckbox: JCheckBox? = null
 
     // Scanning scope
     private var limitToSourceDirsCheckbox: JCheckBox? = null
@@ -72,6 +77,27 @@ class TodoManagerConfigurable : Configurable {
         suppressIdeTodoCheckbox = JCheckBox("Suppress the IDE's built-in TODO highlighting", state.suppressIdeTodoHighlighting).apply {
             toolTipText = "Clears the IDE's own todo/fixme patterns (Settings > Editor > TODO) so they " +
                 "don't double up with this plugin. Restored when turned off. Also empties the IDE's TODO tool window."
+        }
+
+        pathDisplayCombo = JComboBox(PATH_DISPLAY_LABELS).apply {
+            selectedItem = labelForPathDisplay(state.pathDisplay)
+            toolTipText = "How each item's source location is shown on the row. Defaults to the file " +
+                "name to keep rows compact."
+        }
+        tooltipPathDisplayCombo = JComboBox(PATH_DISPLAY_LABELS).apply {
+            selectedItem = labelForPathDisplay(state.tooltipPathDisplay)
+            toolTipText = "What the tooltip shows when hovering an item row."
+            isEnabled = state.showRowTooltip
+        }
+        showRowTooltipCheckbox = JCheckBox("Enabled", state.showRowTooltip).apply {
+            toolTipText = "Uncheck to show no tooltip when hovering an item row."
+            addActionListener { tooltipPathDisplayCombo?.isEnabled = isSelected }
+        }
+        previewOnSingleClickCheckbox = JCheckBox("Preview items on single click", state.previewOnSingleClick).apply {
+            toolTipText = "Single-click shows the item in the editor's reusable preview tab, so tabs " +
+                "don't pile up while browsing; editing the file or double-clicking makes it a normal " +
+                "tab. Enabling this also turns on the IDE's \"Open files in preview tab\" option " +
+                "(Editor > General > Editor Tabs); it is restored when this is turned off."
         }
 
         limitToSourceDirsCheckbox = JCheckBox(
@@ -166,6 +192,16 @@ class TodoManagerConfigurable : Configurable {
             add(boldKeywordsCheckbox!!.leftAlign())
             add(Box.createVerticalStrut(4))
             add(underlineTagsCheckbox!!.leftAlign())
+            add(vstrut())
+
+            // Tool Window
+            add(sectionLabel("Tool Window"))
+            add(Box.createVerticalStrut(4))
+            add(labeledRow("Item location (row):", pathDisplayCombo!!))
+            add(Box.createVerticalStrut(4))
+            add(labeledRow("Hover tooltip:", tooltipPathDisplayCombo!!, showRowTooltipCheckbox!!))
+            add(Box.createVerticalStrut(4))
+            add(previewOnSingleClickCheckbox!!.leftAlign())
             add(vstrut())
 
             // Scanning Scope
@@ -397,6 +433,10 @@ class TodoManagerConfigurable : Configurable {
         if (s.suppressIdeTodoHighlighting != suppressIdeTodoCheckbox?.isSelected) return true
         if (s.boldKeywords != boldKeywordsCheckbox?.isSelected) return true
         if (s.underlineTags != underlineTagsCheckbox?.isSelected) return true
+        if (s.pathDisplay != selectedPathDisplay()) return true
+        if (s.tooltipPathDisplay != selectedTooltipPathDisplay()) return true
+        if (s.showRowTooltip != showRowTooltipCheckbox?.isSelected) return true
+        if (s.previewOnSingleClick != previewOnSingleClickCheckbox?.isSelected) return true
 
         // Scanning scope
         if (s.limitToSourceDirs != limitToSourceDirsCheckbox?.isSelected) return true
@@ -439,6 +479,10 @@ class TodoManagerConfigurable : Configurable {
         s.suppressIdeTodoHighlighting = suppressIdeTodoCheckbox?.isSelected ?: s.suppressIdeTodoHighlighting
         s.boldKeywords = boldKeywordsCheckbox?.isSelected ?: s.boldKeywords
         s.underlineTags = underlineTagsCheckbox?.isSelected ?: s.underlineTags
+        s.pathDisplay = selectedPathDisplay()
+        s.tooltipPathDisplay = selectedTooltipPathDisplay()
+        s.showRowTooltip = showRowTooltipCheckbox?.isSelected ?: s.showRowTooltip
+        s.previewOnSingleClick = previewOnSingleClickCheckbox?.isSelected ?: s.previewOnSingleClick
         s.limitToSourceDirs = limitToSourceDirsCheckbox?.isSelected ?: s.limitToSourceDirs
         s.respectIdeExcludes = respectIdeExcludesCheckbox?.isSelected ?: s.respectIdeExcludes
         s.sourceDirNames = parseCsv(sourceDirNamesField).toMutableList()
@@ -461,8 +505,27 @@ class TodoManagerConfigurable : Configurable {
         // Apply (or undo) IDE built-in TODO suppression to match the saved setting.
         IdeTodoSuppressor.sync()
 
+        // Single-click preview rides on the IDE's native preview tab (in-place tab reuse, no
+        // flicker), which is gated behind the IDE's "Open files in preview tab" option. Turn that
+        // on when our setting is enabled; turn it back off when disabled — but only if enabling our
+        // setting is what switched it on (never fight a choice the user made themselves).
+        val ui = UISettings.getInstance()
+        if (s.previewOnSingleClick && !ui.openInPreviewTabIfPossible) {
+            ui.openInPreviewTabIfPossible = true
+            s.ideTabPreviewAutoEnabled = true
+            ui.fireUISettingsChanged()
+        } else if (!s.previewOnSingleClick && s.ideTabPreviewAutoEnabled) {
+            s.ideTabPreviewAutoEnabled = false
+            if (ui.openInPreviewTabIfPossible) {
+                ui.openInPreviewTabIfPossible = false
+                ui.fireUISettingsChanged()
+            }
+        }
+
         // Repaint editor highlighting and rescan in all open projects so changes apply immediately
         for (project in ProjectManager.getInstance().openProjects) {
+            // Stop tracking (and un-rename) any preview tab when single-click preview is turned off.
+            if (!s.previewOnSingleClick) TodoPreviewTracker.getInstance(project).setPreview(null)
             TodoHighlightPainter.refreshAll(project)
             ApplicationManager.getApplication().executeOnPooledThread {
                 TodoScannerService.getInstance(project).refresh()
@@ -480,6 +543,11 @@ class TodoManagerConfigurable : Configurable {
         suppressIdeTodoCheckbox?.isSelected = s.suppressIdeTodoHighlighting
         boldKeywordsCheckbox?.isSelected = s.boldKeywords
         underlineTagsCheckbox?.isSelected = s.underlineTags
+        pathDisplayCombo?.selectedItem = labelForPathDisplay(s.pathDisplay)
+        tooltipPathDisplayCombo?.selectedItem = labelForPathDisplay(s.tooltipPathDisplay)
+        showRowTooltipCheckbox?.isSelected = s.showRowTooltip
+        tooltipPathDisplayCombo?.isEnabled = s.showRowTooltip
+        previewOnSingleClickCheckbox?.isSelected = s.previewOnSingleClick
         limitToSourceDirsCheckbox?.isSelected = s.limitToSourceDirs
         respectIdeExcludesCheckbox?.isSelected = s.respectIdeExcludes
         sourceDirNamesField?.text = s.sourceDirNames.joinToString(", ")
@@ -505,6 +573,10 @@ class TodoManagerConfigurable : Configurable {
         keywordCaseCombo = null
         keywordsAtLineStartCheckbox = null
         suppressIdeTodoCheckbox = null
+        pathDisplayCombo = null
+        tooltipPathDisplayCombo = null
+        showRowTooltipCheckbox = null
+        previewOnSingleClickCheckbox = null
         limitToSourceDirsCheckbox = null
         respectIdeExcludesCheckbox = null
         sourceDirNamesField = null
@@ -533,6 +605,11 @@ class TodoManagerConfigurable : Configurable {
         suppressIdeTodoCheckbox?.isSelected = defaults.suppressIdeTodoHighlighting
         boldKeywordsCheckbox?.isSelected = defaults.boldKeywords
         underlineTagsCheckbox?.isSelected = defaults.underlineTags
+        pathDisplayCombo?.selectedItem = labelForPathDisplay(defaults.pathDisplay)
+        tooltipPathDisplayCombo?.selectedItem = labelForPathDisplay(defaults.tooltipPathDisplay)
+        showRowTooltipCheckbox?.isSelected = defaults.showRowTooltip
+        tooltipPathDisplayCombo?.isEnabled = defaults.showRowTooltip
+        previewOnSingleClickCheckbox?.isSelected = defaults.previewOnSingleClick
         limitToSourceDirsCheckbox?.isSelected = defaults.limitToSourceDirs
         respectIdeExcludesCheckbox?.isSelected = defaults.respectIdeExcludes
         sourceDirNamesField?.text = defaults.sourceDirNames.joinToString(", ")
@@ -556,6 +633,14 @@ class TodoManagerConfigurable : Configurable {
     private fun selectedKeywordCase(): String =
         caseForLabel(keywordCaseCombo?.selectedItem as? String)
 
+    /** Currently selected item-location mode as a stored code ("NAME"/"RELATIVE"/"ABSOLUTE"). */
+    private fun selectedPathDisplay(): String =
+        pathDisplayForLabel(pathDisplayCombo?.selectedItem as? String)
+
+    /** Currently selected tooltip path mode as a stored code ("NAME"/"RELATIVE"/"ABSOLUTE"). */
+    private fun selectedTooltipPathDisplay(): String =
+        pathDisplayForLabel(tooltipPathDisplayCombo?.selectedItem as? String)
+
     private fun parseKeywords(): List<String> =
         keywordsField?.text?.split(",")?.map { it.trim().uppercase() }?.filter { it.isNotEmpty() } ?: emptyList()
 
@@ -574,13 +659,15 @@ class TodoManagerConfigurable : Configurable {
         }
     }
 
-    private fun labeledRow(label: String, component: JComponent): JPanel {
+    private fun labeledRow(label: String, vararg components: JComponent): JPanel {
         return JPanel().apply {
             layout = BoxLayout(this, BoxLayout.X_AXIS)
             alignmentX = JPanel.LEFT_ALIGNMENT
             add(JLabel(label))
-            add(Box.createHorizontalStrut(8))
-            add(component)
+            for (component in components) {
+                add(Box.createHorizontalStrut(8))
+                add(component)
+            }
             add(Box.createHorizontalGlue())
             maximumSize = Dimension(Int.MAX_VALUE, preferredSize.height)
         }
@@ -622,6 +709,20 @@ class TodoManagerConfigurable : Configurable {
             "Upper-case only" -> "UPPER"
             "Lower-case only" -> "LOWER"
             else -> "ANY"
+        }
+
+        val PATH_DISPLAY_LABELS = arrayOf("File name", "Path from project root", "Absolute path")
+
+        fun labelForPathDisplay(code: String): String = when (code) {
+            "RELATIVE" -> "Path from project root"
+            "ABSOLUTE" -> "Absolute path"
+            else -> "File name"
+        }
+
+        fun pathDisplayForLabel(label: String?): String = when (label) {
+            "Path from project root" -> "RELATIVE"
+            "Absolute path" -> "ABSOLUTE"
+            else -> "NAME"
         }
     }
 }

@@ -45,6 +45,14 @@ object Config {
     var REVERSE_SORT: Boolean
         get() = settings.reverseSort
         set(value) { settings.reverseSort = value }
+
+    /** Row location display: "NAME", "RELATIVE", or "ABSOLUTE". See [TodoManagerSettings.State.pathDisplay]. */
+    val PATH_DISPLAY: String get() = settings.pathDisplay
+    /** Tooltip path display: "NAME", "RELATIVE", or "ABSOLUTE". See [TodoManagerSettings.State.tooltipPathDisplay]. */
+    val TOOLTIP_PATH_DISPLAY: String get() = settings.tooltipPathDisplay
+    /** Whether the hover tooltip on item rows is shown at all. */
+    val SHOW_ROW_TOOLTIP: Boolean get() = settings.showRowTooltip
+    val PREVIEW_ON_SINGLE_CLICK: Boolean get() = settings.previewOnSingleClick
     val BOLD_KEYWORDS: Boolean get() = settings.boldKeywords
     val UNDERLINE_TAGS: Boolean get() = settings.underlineTags
 

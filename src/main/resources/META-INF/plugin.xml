@@ -16,6 +16,8 @@
         <ul>
             <li><b>Tool window</b> with a tree view of every TODO in the project,
                 grouped by file, tag, or priority.</li>
+            <li><b>Locate &amp; preview</b> — show each item's file name or full path, hover for its
+                path in a tooltip, and optionally preview items in a single reusable tab on click.</li>
             <li><b>Bidirectional editing</b> — change a TODO's description, tag, or priority
                 from the panel and the source comment is rewritten in place (with full undo support).</li>
             <li><b>Editor highlighting</b> — keywords, tags, priorities, description text, and
@@ -37,6 +39,20 @@
     <depends>com.intellij.modules.platform</depends>
 
     <change-notes><![CDATA[
+        <h3>1.7.0</h3>
+        <ul>
+            <li><b>File path in the tool window</b> — each item can show just the file name (default),
+                the path from the project root, or the full absolute path. Configure it under
+                <i>Settings &gt; Tools &gt; TODO Manager</i>.</li>
+            <li><b>Hover tooltip</b> — hovering an item reveals its path (project-relative by default,
+                or absolute / file name), handy for reading long paths at a glance. It can be turned
+                off entirely.</li>
+            <li><b>Preview on single click</b> — optionally open items in the editor's reusable preview
+                tab with a single click, so clicking through TODOs doesn't pile up tabs. Editing the
+                file or double-clicking promotes it to a normal tab. (Turning this on enables the IDE's
+                "Open files in preview tab" option; it is restored when turned off.)</li>
+        </ul>
+
         <h3>1.6.1</h3>
         <ul>
             <li><b>Fix</b> — the getting-started tour is now offered through a first-run notification
@@ -172,6 +188,10 @@
         <notificationGroup
             id="TODO Manager Onboarding"
             displayType="STICKY_BALLOON"/>
+
+        <!-- Renames the tab opened by the tool window's single-click preview to "Preview: <file>". -->
+        <editorTabTitleProvider
+            implementation="io.github.j4sp3rtm.todomanager.TodoPreviewTabTitleProvider"/>
     </extensions>
 
     <actions>

@@ -57,6 +57,37 @@ class TodoManagerSettings : PersistentStateComponent<TodoManagerSettings.State> 
         /** When true, the tool window's group order and the items within each group are reversed. */
         var reverseSort: Boolean = false,
 
+        /**
+         * How the source location is shown on each item row: "NAME" (file name only, e.g.
+         * `Login.ts:34`), "RELATIVE" (path from the project root, e.g. `src/app/Login.ts:34`),
+         * or "ABSOLUTE" (full filesystem path). Defaults to "NAME" to keep the row compact — the
+         * hover tooltip (see [tooltipPathDisplay]) is the place for the fuller path.
+         */
+        var pathDisplay: String = "NAME",
+
+        /**
+         * How the path is shown in the row's hover tooltip: "ABSOLUTE" (full filesystem path, like
+         * hovering an editor tab), "RELATIVE" (path from the project root, the default), or "NAME"
+         * (file name only). Independent of [pathDisplay].
+         */
+        var tooltipPathDisplay: String = "RELATIVE",
+
+        /** Whether hovering an item row shows the path tooltip at all. On by default. */
+        var showRowTooltip: Boolean = true,
+
+        /**
+         * When true, single-clicking an item opens it in the editor's reusable preview tab instead of
+         * requiring a double-click (which always opens a permanent tab). Off by default.
+         */
+        var previewOnSingleClick: Boolean = false,
+
+        /**
+         * Bookkeeping for [previewOnSingleClick]: true when enabling it was what turned on the IDE's
+         * "Open files in preview tab" option, so disabling it turns that option back off. If the user
+         * already had the IDE option on, this stays false and we never touch it.
+         */
+        var ideTabPreviewAutoEnabled: Boolean = false,
+
         /** Keyword → hex color, e.g. "TODO" → "#42A5F5" */
         @MapAnnotation(surroundWithTag = false)
         var keywordColors: MutableMap<String, String> = defaultKeywordColors(),
