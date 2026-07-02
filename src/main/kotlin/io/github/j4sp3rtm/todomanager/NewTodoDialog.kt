@@ -14,7 +14,7 @@ class NewTodoDialog(project: Project) : DialogWrapper(project) {
         selectedItem = "TODO"
     }
     private val tagField = JTextField(15)
-    private val priorityCombo = JComboBox(arrayOf("", "critical", "high", "medium", "low"))
+    private val priorityCombo = JComboBox(arrayOf("") + Config.PRIORITIES)
     private val descriptionField = JTextField(30)
     private val generalCheckBox = JCheckBox("General TODO (not attached to code)").apply {
         toolTipText = "Store this TODO in the panel instead of inserting a comment at the caret"

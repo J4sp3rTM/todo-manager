@@ -156,6 +156,17 @@ class TodoManagerSettings : PersistentStateComponent<TodoManagerSettings.State> 
         fun getInstance(): TodoManagerSettings =
             ApplicationManager.getApplication().getService(TodoManagerSettings::class.java)
 
+        /**
+         * The canonical priority set, in sort order (most severe first). The single source of truth
+         * consumed by the scanner regex ([TodoPattern]), the "New TODO" dialog, the tool window
+         * context menu and group sort order, the settings color-picker rows, and the editor
+         * highlighter's bold rule. Add a priority here and every consumer recognizes it.
+         */
+        val PRIORITIES: List<String> = listOf("critical", "high", "medium", "low")
+
+        /** Default color per priority, positionally aligned with [PRIORITIES]. */
+        private val DEFAULT_PRIORITY_COLOR_CODES = listOf("#D32F2F", "#E53935", "#FFB300", "#4CAF50")
+
         fun defaultKeywordColors(): MutableMap<String, String> = mutableMapOf(
             "TODO" to "#42A5F5",
             "FIXME" to "#E53935",
@@ -164,12 +175,9 @@ class TodoManagerSettings : PersistentStateComponent<TodoManagerSettings.State> 
             "XXX" to "#AB47BC",
         )
 
-        fun defaultPriorityColors(): MutableMap<String, String> = mutableMapOf(
-            "critical" to "#D32F2F",
-            "high" to "#E53935",
-            "medium" to "#FFB300",
-            "low" to "#4CAF50",
-        )
+        /** Builds the default priority→color map from [PRIORITIES] so the keys can't drift from it. */
+        fun defaultPriorityColors(): MutableMap<String, String> =
+            PRIORITIES.zip(DEFAULT_PRIORITY_COLOR_CODES).toMap().toMutableMap()
 
         fun defaultTagPalette(): MutableList<String> = mutableListOf(
             "#42A5F5", "#AB47BC", "#00ACC1", "#FF9800",

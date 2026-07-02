@@ -61,7 +61,7 @@ class TodoManagerConfigurable : Configurable {
 
         enabledCheckbox = JCheckBox("Enable TODO Manager", state.enabled)
         keywordsField = JTextField(state.keywords.joinToString(", "), 30)
-        groupByCombo = JComboBox(arrayOf("FILE", "TAG", "PRIORITY")).apply {
+        groupByCombo = JComboBox(Config.GROUP_BY_OPTIONS.toTypedArray()).apply {
             selectedItem = state.groupBy
         }
         boldKeywordsCheckbox = JCheckBox("Bold keywords", state.boldKeywords)
@@ -131,9 +131,9 @@ class TodoManagerConfigurable : Configurable {
         val priorityColorsPanel = JPanel().apply {
             layout = BoxLayout(this, BoxLayout.Y_AXIS)
         }
-        for (prio in listOf("critical", "high", "medium", "low")) {
+        for (prio in Config.PRIORITIES) {
             val cp = ColorPanel()
-            cp.selectedColor = Color.decode(state.priorityColors[prio] ?: "#9E9E9E")
+            cp.selectedColor = Color.decode(state.priorityColors[prio] ?: state.defaultKeywordColor)
             priorityColorPanels[prio] = cp
             priorityColorsPanel.add(colorRow(prio.replaceFirstChar { it.uppercase() } + ":", cp))
             priorityColorsPanel.add(Box.createVerticalStrut(4))
@@ -309,7 +309,7 @@ class TodoManagerConfigurable : Configurable {
         val newMap = mutableMapOf<String, String>()
         for (kw in currentKeywords) {
             val color = existingColors[kw]
-            val hex = if (color != null) colorToHex(color) else (defaults[kw] ?: "#9E9E9E")
+            val hex = if (color != null) colorToHex(color) else (defaults[kw] ?: TodoManagerSettings.getInstance().state.defaultKeywordColor)
             newMap[kw] = hex
         }
         rebuildKeywordColorRows(newMap)
@@ -557,7 +557,7 @@ class TodoManagerConfigurable : Configurable {
         descriptionColorPanel?.selectedColor = Color.decode(s.descriptionColor)
         delimiterColorPanel?.selectedColor = Color.decode(s.delimiterColor)
         for ((prio, cp) in priorityColorPanels) {
-            cp.selectedColor = Color.decode(s.priorityColors[prio] ?: "#9E9E9E")
+            cp.selectedColor = Color.decode(s.priorityColors[prio] ?: s.defaultKeywordColor)
         }
         rebuildTagColorOverrideRows(s.tagColors)
         rebuildTagPaletteRows(s.tagPalette)
@@ -619,7 +619,7 @@ class TodoManagerConfigurable : Configurable {
         descriptionColorPanel?.selectedColor = Color.decode(defaults.descriptionColor)
         delimiterColorPanel?.selectedColor = Color.decode(defaults.delimiterColor)
         for ((prio, cp) in priorityColorPanels) {
-            cp.selectedColor = Color.decode(defaults.priorityColors[prio] ?: "#9E9E9E")
+            cp.selectedColor = Color.decode(defaults.priorityColors[prio] ?: defaults.defaultKeywordColor)
         }
         rebuildTagColorOverrideRows(defaults.tagColors)
         rebuildTagPaletteRows(defaults.tagPalette)

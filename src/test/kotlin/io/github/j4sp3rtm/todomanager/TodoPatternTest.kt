@@ -77,4 +77,43 @@ class TodoPatternTest : TestCase() {
         assertNull(matchedKeyword("// the credit note line", caseSensitive = true, atLineStart = true))
         assertEquals("TODO", matchedKeyword("// TODO real one", caseSensitive = true, atLineStart = true))
     }
+
+    /* ============ Priority group (issue #4: single-source priorities) ============ */
+
+    private val priorities = TodoManagerSettings.PRIORITIES
+
+    /** The priority captured by group 3, or null if the optional group didn't match. */
+    private fun matchedPriority(text: String, priorities: List<String> = this.priorities): String? =
+        TodoPattern.build(keywords, priorities = priorities).find(text)?.groupValues?.get(3)?.ifEmpty { null }
+
+    fun testEachCanonicalPriorityIsCaptured() {
+        for (p in priorities) {
+            assertEquals("'($p)' should be captured as a priority", p, matchedPriority("// TODO ($p) desc"))
+        }
+    }
+
+    fun testPriorityMatchingIsCaseInsensitiveByDefault() {
+        // The regex matches regardless of case (the scanner/highlighter lower-case it afterward).
+        assertEquals("HIGH", matchedPriority("// TODO (HIGH) desc"))
+    }
+
+    fun testUnknownPriorityIsNotCaptured() {
+        // A word that isn't a configured priority stays in the description instead.
+        assertNull(matchedPriority("// TODO (urgent) desc"))
+    }
+
+    fun testPriorityAlternationFollowsTheSuppliedList() {
+        // Proves the group is driven by the passed list (single source), not a hardcoded alternation:
+        // extend the list and the new value is recognized.
+        assertEquals("urgent", matchedPriority("// TODO (urgent) desc", priorities + "urgent"))
+    }
+
+    fun testTagPriorityAndDescriptionAreCapturedTogether() {
+        val groups = TodoPattern.build(keywords, priorities = priorities)
+            .find("// TODO [auth] (high) fix login")!!.groupValues
+        assertEquals("TODO", groups[1])
+        assertEquals("auth", groups[2])
+        assertEquals("high", groups[3])
+        assertEquals("fix login", groups[4].trim())
+    }
 }

@@ -82,9 +82,13 @@ object TodoHighlightPainter {
     private fun rangesFor(comment: PsiComment): List<Pair<TextRange, TextAttributes>> {
         val text = comment.text
         val matches = TodoPattern.build(
-            Config.matchKeywords(),
+            // Match the same set the scanner does (user keywords + DONE) so completed items are
+            // highlighted in the editor too, not just listed in the tool window. This honors the
+            // TodoPattern doc's claim that the scanner and highlighter stay in sync.
+            Config.matchKeywords() + Config.DONE_KEYWORD,
             caseSensitive = Config.CASE_SENSITIVE_KEYWORDS,
             atLineStart = Config.KEYWORDS_AT_LINE_START,
+            priorities = Config.PRIORITIES,
         ).findAll(text).toList()
         if (matches.isEmpty()) return emptyList()
 
@@ -132,7 +136,7 @@ object TodoHighlightPainter {
                 result += TextRange(start + g.range.first - 1, start + g.range.last + 2) to
                     TextAttributes().apply {
                         foregroundColor = Config.priorityColor(priority)
-                        fontType = if (priority == "critical") Font.BOLD else Font.PLAIN
+                        fontType = if (priority == Config.CRITICAL_PRIORITY) Font.BOLD else Font.PLAIN
                     }
             }
 

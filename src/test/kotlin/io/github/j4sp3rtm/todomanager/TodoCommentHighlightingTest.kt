@@ -75,6 +75,22 @@ class TodoCommentHighlightingTest : BasePlatformTestCase() {
         assertForeground(text, "refresh token", descriptionColor)
     }
 
+    fun testDoneKeywordIsHighlighted() {
+        // The highlighter now matches the same set as the scanner (user keywords + DONE), so a
+        // completed comment is colorized in the editor, not just listed in the tool window.
+        val text = "class S {\n  // DONE wrapped up\n}"
+        paint("S.java", text)
+        assertForeground(text, "DONE", Config.keywordColor("DONE"))
+    }
+
+    fun testUpperCasePriorityGetsThePriorityColor() {
+        // (HIGH) is lower-cased before lookup, so it colors the same as (high) rather than falling
+        // back to no color.
+        val text = "class S {\n  // HACK (HIGH) shout\n}"
+        paint("S.java", text)
+        assertForeground(text, "(HIGH)", Config.priorityColor("high")!!)
+    }
+
     /* ============ Helpers ============ */
 
     private fun paint(fileName: String, text: String) {

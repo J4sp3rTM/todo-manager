@@ -39,6 +39,21 @@
     <depends>com.intellij.modules.platform</depends>
 
     <change-notes><![CDATA[
+        <h3>1.7.1</h3>
+        <ul>
+            <li><b>Group by keyword in Settings</b> — the <i>Keyword</i> grouping was only reachable
+                from the toolbar; it is now also offered in the <i>Group by</i> dropdown under
+                <i>Settings &gt; Tools &gt; TODO Manager</i>.</li>
+            <li><b>Completed items are highlighted in the editor</b> — <code>DONE</code> comments are
+                now colorized in the editor just like they are listed in the tool window.</li>
+            <li><b>Fix</b> — changing your keyword list no longer leaves the toolbar's keyword filter
+                pointing at a removed keyword (which could silently hide every item); the filter
+                options now update live and fall back to <i>All</i> when the selected keyword is gone.</li>
+            <li>Internal — priorities and the group-by options now come from a single source of truth,
+                so the scanner, editor highlighting, dialogs, menus, and settings can no longer drift
+                apart.</li>
+        </ul>
+
         <h3>1.7.0</h3>
         <ul>
             <li><b>File path in the tool window</b> — each item can show just the file name (default),

@@ -66,6 +66,16 @@ class TodoToolWindowPanel(private val project: Project) : JPanel(BorderLayout())
      */
     private val emptyStatePane = JEditorPane()
 
+    /** "Group by" dropdown in the toolbar. Held as a field so [syncToolbarFromSettings] can keep its
+     *  selection truthful after Settings changes the grouping. */
+    private lateinit var groupByCombo: JComboBox<String>
+    /** Keyword-filter dropdown in the toolbar. Held as a field so [syncToolbarFromSettings] can
+     *  rebuild its options when the configured keyword set changes. */
+    private lateinit var keywordFilterCombo: JComboBox<String>
+    /** True while [syncToolbarFromSettings] is programmatically updating the toolbar combos; the
+     *  combos' ActionListeners check this to avoid treating sync-driven events as user clicks. */
+    private var syncingToolbar = false
+
     init {
         treeModel = DefaultTreeModel(rootNode)
         tree = object : Tree(treeModel) {
@@ -122,9 +132,11 @@ class TodoToolWindowPanel(private val project: Project) : JPanel(BorderLayout())
         centerPanel.add(createEmptyStateCard(), CARD_EMPTY)
         add(centerPanel, BorderLayout.CENTER)
 
-        // Listen for scan results
+        // Listen for scan results. Settings > Apply triggers a refresh → this listener fires, so we
+        // sync the toolbar from Config here (rebuilding the keyword-filter options if the keyword
+        // set changed) before rebuilding the tree.
         scannerService.addChangeListener {
-            invokeLater { rebuildTree() }
+            invokeLater { syncToolbarFromSettings(); rebuildTree() }
         }
 
         // Initial scan, and warm the git-user cache so the first "Mark as Done" doesn't block the EDT.
@@ -139,23 +151,27 @@ class TodoToolWindowPanel(private val project: Project) : JPanel(BorderLayout())
             border = JBUI.Borders.customLineBottom(JBColor.border())
         }
 
-        val groupByCombo = ComboBoxWithWidePopup(arrayOf("FILE", "TAG", "PRIORITY", "KEYWORD")).apply {
+        groupByCombo = ComboBoxWithWidePopup(Config.GROUP_BY_OPTIONS.toTypedArray()).apply {
             selectedItem = Config.GROUP_BY
             toolTipText = "Group items by"
             addActionListener {
+                if (syncingToolbar) return@addActionListener
                 TodoManagerSettings.getInstance().state.groupBy = selectedItem as String
                 rebuildTree()
             }
         }
 
         // Keyword filter: "All", or a single keyword shown exclusively. Built from the configured
-        // keywords (upper-cased to match the canonical form stored on each item).
-        val keywordOptions = (listOf(Config.ALL_KEYWORDS) + Config.KEYWORDS.map { it.uppercase() }.distinct())
+        // keywords (upper-cased to match the canonical form stored on each item). The options are
+        // rebuilt on settings change by [syncToolbarFromSettings] so new keywords become filterable
+        // and removed ones don't linger as ghost options.
+        val keywordOptions = keywordFilterOptions()
         if (Config.KEYWORD_FILTER !in keywordOptions) Config.KEYWORD_FILTER = Config.ALL_KEYWORDS
-        val keywordFilterCombo = ComboBoxWithWidePopup(keywordOptions.toTypedArray()).apply {
+        keywordFilterCombo = ComboBoxWithWidePopup(keywordOptions.toTypedArray()).apply {
             selectedItem = Config.KEYWORD_FILTER
             toolTipText = "Show only items with this keyword"
             addActionListener {
+                if (syncingToolbar) return@addActionListener
                 Config.KEYWORD_FILTER = selectedItem as String
                 rebuildTree()
             }
@@ -201,6 +217,44 @@ class TodoToolWindowPanel(private val project: Project) : JPanel(BorderLayout())
         toolbar.add(reverseCheckBox)
 
         return toolbar
+    }
+
+    /** The keyword-filter dropdown's option list: "All" plus the configured keywords, upper-cased. */
+    private fun keywordFilterOptions(): List<String> =
+        (listOf(Config.ALL_KEYWORDS) + Config.KEYWORDS.map { it.uppercase() }.distinct())
+
+    /**
+     * Re-syncs the toolbar dropdowns with the current settings. Called from the scan-change listener
+     * after Settings > Tools > TODO Manager > Apply rescans and rebuilds the tree — without this the
+     * keyword-filter combo would list stale keywords (new ones unfilterable, deleted ones lingering)
+     * and the "Group by" combo would keep showing the old mode while the tree regrouped correctly.
+     *
+     * Guards the keyword-filter combo so a removed keyword can't leave the filter stuck pointing at
+     * it (which would silently hide every item), and only swaps the model when the option set
+     * actually changed so a plain refresh doesn't disturb an in-flight selection.
+     */
+    private fun syncToolbarFromSettings() {
+        syncingToolbar = true
+        try {
+            val newOptions = keywordFilterOptions()
+            // Ghost-filter guard: if the selected filter keyword was removed in Settings, fall back
+            // to "All" so the panel doesn't silently empty out on the next rebuildTree().
+            if (Config.KEYWORD_FILTER !in newOptions) Config.KEYWORD_FILTER = Config.ALL_KEYWORDS
+
+            val current = (0 until keywordFilterCombo.itemCount).map { keywordFilterCombo.getItemAt(it) as String }
+            if (current != newOptions) {
+                // A fresh model lands on its first element and fires an ActionEvent; the
+                // [syncingToolbar] guard keeps that from clobbering the filter, then we restore it.
+                val saved = Config.KEYWORD_FILTER
+                keywordFilterCombo.model = DefaultComboBoxModel(newOptions.toTypedArray())
+                keywordFilterCombo.selectedItem = saved
+            }
+            // Keep both selections truthful about the current Config (no-op if already in sync).
+            groupByCombo.selectedItem = Config.GROUP_BY
+            keywordFilterCombo.selectedItem = Config.KEYWORD_FILTER
+        } finally {
+            syncingToolbar = false
+        }
     }
 
     /**
@@ -272,7 +326,7 @@ class TodoToolWindowPanel(private val project: Project) : JPanel(BorderLayout())
         }
 
         var sortedKeys = if (groupBy == "PRIORITY") {
-            val order = listOf("Critical", "High", "Medium", "Low", "(no priority)")
+            val order = Config.PRIORITIES.map { it.replaceFirstChar { c -> c.uppercase() } } + "(no priority)"
             grouped.keys.sortedBy { key -> order.indexOf(key).let { if (it == -1) order.size else it } }
         } else {
             grouped.keys.sorted()
@@ -467,7 +521,7 @@ class TodoToolWindowPanel(private val project: Project) : JPanel(BorderLayout())
 
     private fun createPrioritySubMenu(item: TodoItem): JMenu {
         return JMenu("Set Priority").apply {
-            for (p in listOf("critical", "high", "medium", "low", null)) {
+            for (p in Config.PRIORITIES + listOf(null)) {
                 val label = p?.replaceFirstChar { it.uppercase() } ?: "None"
                 add(JMenuItem(label).apply {
                     addActionListener {

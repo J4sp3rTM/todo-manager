@@ -30,6 +30,7 @@ object TodoScanner {
             Config.matchKeywords() + Config.DONE_KEYWORD,
             caseSensitive = Config.CASE_SENSITIVE_KEYWORDS,
             atLineStart = Config.KEYWORDS_AT_LINE_START,
+            priorities = Config.PRIORITIES,
         )
         val items = mutableListOf<TodoItem>()
 

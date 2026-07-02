@@ -28,6 +28,18 @@ object Config {
     val SUPPRESS_IDE_TODO: Boolean get() = settings.suppressIdeTodoHighlighting
     val GROUP_BY: String get() = settings.groupBy
 
+    val GROUP_BY_OPTIONS: List<String> = listOf("FILE", "TAG", "PRIORITY", "KEYWORD")
+
+    /**
+     * The canonical priority set, in sort order. Single source of truth feeding the scanner regex
+     * ([TodoPattern]), the "New TODO" dialog, the context menu, the group sort order, the settings
+     * color-picker rows, and the highlighter's bold rule. See [TodoManagerSettings.PRIORITIES].
+     */
+    val PRIORITIES: List<String> get() = TodoManagerSettings.PRIORITIES
+
+    /** The priority whose keyword gets bold emphasis in the editor highlighter. */
+    const val CRITICAL_PRIORITY = "critical"
+
     /** Tool window keyword filter: [ALL_KEYWORDS] (show everything) or a single upper-case keyword. */
     var KEYWORD_FILTER: String
         get() = settings.keywordFilter
