@@ -57,9 +57,10 @@ class TodoScannerService(private val project: Project) {
 
     /** Rescans the entire project for TODO items. Call from a background thread. */
     fun refresh() {
-        codeItems = runReadAction {
-            scanProject()
-        }
+        val files = runReadAction { collectProjectFiles() }
+        // One short read action per file instead of one for the whole project: parsing every file's
+        // PSI in a single read action starves the EDT's write-intent lock for seconds on big projects.
+        codeItems = files.flatMap { file -> runReadAction { scanFile(file) } }
         notifyListeners()
     }
 
@@ -153,13 +154,14 @@ class TodoScannerService(private val project: Project) {
         )
     }
 
-    private fun scanProject(): List<TodoItem> {
+    /** Lists the files the full scan covers (call inside a read action); also records the scan scope. */
+    private fun collectProjectFiles(): List<VirtualFile> {
         val fileIndex = ProjectFileIndex.getInstance(project)
         val excludedNames = Config.EXCLUDED_DIR_NAMES.map { it.lowercase() }.toHashSet()
         val sourceNames = Config.SOURCE_DIR_NAMES.map { it.lowercase() }.toHashSet()
 
         val bases = mutableListOf<VirtualFile>()
-        val allItems = mutableListOf<TodoItem>()
+        val files = mutableListOf<VirtualFile>()
         // Content roots can overlap (e.g. Gradle/Maven source-set modules nested under the project
         // root module), so a file may be reachable from several bases; scan each file only once.
         val scannedFiles = HashSet<VirtualFile>()
@@ -178,14 +180,12 @@ class TodoScannerService(private val project: Project) {
             }
             bases.addAll(rootBases)
             for (base in rootBases) {
-                collectScannableFiles(base, excludedNames, fileIndex).filter { scannedFiles.add(it) }.forEach { vFile ->
-                    allItems.addAll(scanFile(vFile))
-                }
+                collectScannableFiles(base, excludedNames, fileIndex).filterTo(files) { scannedFiles.add(it) }
             }
         }
         scanBases = bases
         noSourceDirFound = Config.LIMIT_TO_SOURCE_DIRS && roots.isNotEmpty() && !anySourceDirFound
-        return allItems
+        return files
     }
 
     /** True if [file] would be included by the last full scan's scope. */
