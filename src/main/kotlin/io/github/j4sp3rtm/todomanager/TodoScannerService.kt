@@ -160,6 +160,9 @@ class TodoScannerService(private val project: Project) {
 
         val bases = mutableListOf<VirtualFile>()
         val allItems = mutableListOf<TodoItem>()
+        // Content roots can overlap (e.g. Gradle/Maven source-set modules nested under the project
+        // root module), so a file may be reachable from several bases; scan each file only once.
+        val scannedFiles = HashSet<VirtualFile>()
         var anySourceDirFound = false
         val roots = ProjectRootManager.getInstance(project).contentRoots
         for (root in roots) {
@@ -175,7 +178,7 @@ class TodoScannerService(private val project: Project) {
             }
             bases.addAll(rootBases)
             for (base in rootBases) {
-                collectScannableFiles(base, excludedNames, fileIndex).forEach { vFile ->
+                collectScannableFiles(base, excludedNames, fileIndex).filter { scannedFiles.add(it) }.forEach { vFile ->
                     allItems.addAll(scanFile(vFile))
                 }
             }
