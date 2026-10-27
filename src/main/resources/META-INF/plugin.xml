@@ -39,6 +39,16 @@
     <depends>com.intellij.modules.platform</depends>
 
     <change-notes><![CDATA[
+        <h3>1.7.2</h3>
+        <ul>
+            <li><b>Fix</b> — tasks are no longer listed several times. In projects whose modules have
+                overlapping content roots (typical for Gradle/Maven source-set modules), a file was
+                scanned once per root; each file is now scanned only once.</li>
+            <li><b>Fix</b> — no more IDE freezes while the project is being scanned. The full scan used
+                to hold a single long read action for the whole project (seconds on large projects,
+                mostly at startup); it now scans file by file so the editor stays responsive.</li>
+        </ul>
+
         <h3>1.7.1</h3>
         <ul>
             <li><b>Group by keyword in Settings</b> — the <i>Keyword</i> grouping was only reachable
