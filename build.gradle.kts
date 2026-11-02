@@ -5,7 +5,7 @@ plugins {
 
 group = "io.github.j4sp3rtm"
 // Overridable from CI via -PpluginVersion=<x> (the release workflow derives it from the git tag).
-version = (findProperty("pluginVersion") as String?) ?: "1.7.2"
+version = (findProperty("pluginVersion") as String?) ?: "1.7.3"
 
 repositories {
     mavenCentral()
@@ -87,4 +87,10 @@ tasks.register<Delete>("wipeSandboxConfig") {
 }
 if (project.hasProperty("freshSandbox")) {
     tasks.named("runIde") { dependsOn("wipeSandboxConfig") }
+}
+
+// Pass a checked-out repository to the scan stress test: ./gradlew test -PbigRepo=/path/to/repo
+tasks.test {
+    findProperty("bigRepo")?.let { systemProperty("todo.bigRepo", it.toString()) }
+    testLogging.showStandardStreams = true
 }

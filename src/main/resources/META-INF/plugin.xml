@@ -39,6 +39,15 @@
     <depends>com.intellij.modules.platform</depends>
 
     <change-notes><![CDATA[
+        <h3>1.7.3</h3>
+        <ul>
+            <li><b>Fix</b> — further reduces IDE freezes while the project is scanned. The file tree is
+                now walked one folder at a time instead of in one long read action, the first scan waits
+                until indexing has finished, a scan is abandoned as soon as a newer one starts or the
+                project closes, and bursts of file-system changes (checkout, builds) trigger a single
+                rescan instead of one per event.</li>
+        </ul>
+
         <h3>1.7.2</h3>
         <ul>
             <li><b>Fix</b> — tasks are no longer listed several times. In projects whose modules have
