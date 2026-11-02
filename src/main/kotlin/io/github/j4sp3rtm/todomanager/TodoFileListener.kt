@@ -48,12 +48,12 @@ class TodoFileListener(private val project: Project) : BulkFileListener {
 
         if (!needsFullRefresh && filesToRescan.isEmpty() && pathsToRemove.isEmpty()) return
 
+        val service = TodoScannerService.getInstance(project)
+        if (needsFullRefresh) {
+            service.scheduleRefresh()
+            return
+        }
         ApplicationManager.getApplication().executeOnPooledThread {
-            val service = TodoScannerService.getInstance(project)
-            if (needsFullRefresh) {
-                service.refresh()
-                return@executeOnPooledThread
-            }
             pathsToRemove.forEach { service.removeFilesUnder(it) }
             filesToRescan
                 .filter { it.isValid && !it.isDirectory && !it.fileType.isBinary }

@@ -30,4 +30,26 @@ class TodoScannerServiceTest : BasePlatformTestCase() {
 
         assertEquals(1, service.items.size)
     }
+
+    fun testNestedFilesAreFoundAndJunkDirectoriesAreSkipped() {
+        myFixture.addFileToProject("a/b/c/Deep.java", "class Deep {\n  // TODO deep\n}")
+        myFixture.addFileToProject("Top.java", "class Top {\n  // TODO top\n}")
+        myFixture.addFileToProject("node_modules/lib/Junk.java", "class Junk {\n  // TODO junk\n}")
+
+        val service = TodoScannerService.getInstance(project)
+        service.refresh()
+
+        assertEquals(setOf("deep", "top"), service.items.map { it.description }.toSet())
+    }
+
+    fun testRepeatedRefreshesEndWithTheCompleteResult() {
+        myFixture.addFileToProject("A.java", "class A {\n  // TODO one\n}")
+        myFixture.addFileToProject("B.java", "class B {\n  // TODO two\n}")
+        val service = TodoScannerService.getInstance(project)
+
+        service.refresh()
+        service.refresh()
+
+        assertEquals(2, service.items.size)
+    }
 }

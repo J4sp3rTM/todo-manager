@@ -10,6 +10,10 @@ import com.intellij.openapi.vfs.VfsUtilCore
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiManager
+import com.intellij.util.concurrency.AppExecutorUtil
+import java.util.concurrent.ScheduledFuture
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * Project-level service that scans for TODO items across source files and caches results.
@@ -47,6 +51,14 @@ class TodoScannerService(private val project: Project) {
 
     private val generalStore get() = GeneralTodoStore.getInstance(project)
 
+    /** Bumped by every [refresh]; a running full scan that sees a newer value was superseded and stops. */
+    private val scanGeneration = AtomicInteger()
+
+    private var pendingRefresh: ScheduledFuture<*>? = null
+
+    /** Thrown inside a full scan that was superseded by a newer one, or whose project was closed. */
+    private class ScanAborted : RuntimeException(null, null, false, false)
+
     fun addChangeListener(listener: () -> Unit) {
         listeners.add(listener)
     }
@@ -55,13 +67,55 @@ class TodoScannerService(private val project: Project) {
         listeners.forEach { it() }
     }
 
-    /** Rescans the entire project for TODO items. Call from a background thread. */
+    /**
+     * Rescans the entire project for TODO items. Call from a background thread.
+     *
+     * Nothing here holds the read lock for long: the file tree is walked one directory per read
+     * action and each file is parsed in its own read action, so a pending write action (the EDT
+     * waiting on its write-intent lock) only ever waits for a single directory or file. A scan is
+     * abandoned as soon as a newer [refresh] starts or the project closes.
+     */
     fun refresh() {
-        val files = runReadAction { collectProjectFiles() }
-        // One short read action per file instead of one for the whole project: parsing every file's
-        // PSI in a single read action starves the EDT's write-intent lock for seconds on big projects.
-        codeItems = files.flatMap { file -> runReadAction { scanFile(file) } }
+        val generation = scanGeneration.incrementAndGet()
+        val items = try {
+            val files = collectProjectFiles(generation)
+            val found = ArrayList<TodoItem>()
+            for (file in files) {
+                found += readStep(generation) { scanFile(file) }
+            }
+            checkScanActive(generation)
+            found
+        } catch (aborted: ScanAborted) {
+            return
+        }
+        codeItems = items
         notifyListeners()
+    }
+
+    /**
+     * Requests a full [refresh] shortly from now, merging bursts of requests into one. Directory-level
+     * file events (checkout, build output, generators) arrive in bursts; scanning once after the
+     * burst is enough.
+     */
+    fun scheduleRefresh() {
+        synchronized(this) {
+            pendingRefresh?.cancel(false)
+            pendingRefresh = AppExecutorUtil.getAppScheduledExecutorService().schedule(
+                { if (!project.isDisposed) refresh() },
+                REFRESH_DEBOUNCE_MS,
+                TimeUnit.MILLISECONDS,
+            )
+        }
+    }
+
+    private fun checkScanActive(generation: Int) {
+        if (project.isDisposed || generation != scanGeneration.get()) throw ScanAborted()
+    }
+
+    /** Runs [action] in its own short read action, unless the scan was abandoned in the meantime. */
+    private fun <T> readStep(generation: Int, action: () -> T): T {
+        checkScanActive(generation)
+        return runReadAction(action)
     }
 
     /** Rescans a single file and merges results, respecting the current scan scope. */
@@ -154,8 +208,8 @@ class TodoScannerService(private val project: Project) {
         )
     }
 
-    /** Lists the files the full scan covers (call inside a read action); also records the scan scope. */
-    private fun collectProjectFiles(): List<VirtualFile> {
+    /** Lists the files the full scan covers, one short read action per directory; also records the scan scope. */
+    private fun collectProjectFiles(generation: Int): List<VirtualFile> {
         val fileIndex = ProjectFileIndex.getInstance(project)
         val excludedNames = Config.EXCLUDED_DIR_NAMES.map { it.lowercase() }.toHashSet()
         val sourceNames = Config.SOURCE_DIR_NAMES.map { it.lowercase() }.toHashSet()
@@ -166,13 +220,13 @@ class TodoScannerService(private val project: Project) {
         // root module), so a file may be reachable from several bases; scan each file only once.
         val scannedFiles = HashSet<VirtualFile>()
         var anySourceDirFound = false
-        val roots = ProjectRootManager.getInstance(project).contentRoots
+        val roots = readStep(generation) { ProjectRootManager.getInstance(project).contentRoots }
         for (root in roots) {
             val rootBases = if (Config.LIMIT_TO_SOURCE_DIRS) {
                 // Limiting is strict: with no source dir under this root, scan nothing here (rather
                 // than silently falling back to the whole root) so the empty result matches the
                 // "add a source folder" banner the tool window shows.
-                val sourceDirs = findSourceDirs(root, sourceNames, excludedNames, fileIndex)
+                val sourceDirs = findSourceDirs(root, sourceNames, excludedNames, fileIndex, generation)
                 if (sourceDirs.isNotEmpty()) anySourceDirFound = true
                 sourceDirs
             } else {
@@ -180,7 +234,7 @@ class TodoScannerService(private val project: Project) {
             }
             bases.addAll(rootBases)
             for (base in rootBases) {
-                collectScannableFiles(base, excludedNames, fileIndex).filterTo(files) { scannedFiles.add(it) }
+                collectScannableFiles(base, excludedNames, fileIndex, generation).filterTo(files) { scannedFiles.add(it) }
             }
         }
         scanBases = bases
@@ -220,11 +274,14 @@ class TodoScannerService(private val project: Project) {
         sourceNames: Set<String>,
         excludedNames: Set<String>,
         fileIndex: ProjectFileIndex,
+        generation: Int,
     ): List<VirtualFile> {
         val found = mutableListOf<VirtualFile>()
         fun search(dir: VirtualFile) {
-            for (child in dir.children) {
-                if (!child.isDirectory || isPrunedDir(child, excludedNames, fileIndex)) continue
+            val subDirs = readStep(generation) {
+                dir.children.filter { it.isDirectory && !isPrunedDir(it, excludedNames, fileIndex) }
+            }
+            for (child in subDirs) {
                 if (child.name.lowercase() in sourceNames) {
                     found.add(child)
                 } else {
@@ -240,15 +297,23 @@ class TodoScannerService(private val project: Project) {
         base: VirtualFile,
         excludedNames: Set<String>,
         fileIndex: ProjectFileIndex,
+        generation: Int,
     ): List<VirtualFile> {
         val result = mutableListOf<VirtualFile>()
         fun walk(file: VirtualFile) {
-            if (file.isDirectory) {
-                if (isPrunedDir(file, excludedNames, fileIndex)) return
-                file.children.forEach { walk(it) }
-            } else if (isScannable(file) && !isExcludedByIde(file, fileIndex)) {
-                result.add(file)
+            val subDirs = readStep(generation) {
+                val dirs = mutableListOf<VirtualFile>()
+                if (!file.isDirectory) {
+                    if (isScannable(file) && !isExcludedByIde(file, fileIndex)) result.add(file)
+                } else if (!isPrunedDir(file, excludedNames, fileIndex)) {
+                    for (child in file.children) {
+                        if (child.isDirectory) dirs.add(child)
+                        else if (isScannable(child) && !isExcludedByIde(child, fileIndex)) result.add(child)
+                    }
+                }
+                dirs
             }
+            subDirs.forEach { walk(it) }
         }
         walk(base)
         return result
@@ -270,6 +335,8 @@ class TodoScannerService(private val project: Project) {
         file.isValid && !file.isDirectory && !file.fileType.isBinary
 
     companion object {
+        private const val REFRESH_DEBOUNCE_MS = 300L
+
         fun getInstance(project: Project): TodoScannerService =
             project.getService(TodoScannerService::class.java)
     }

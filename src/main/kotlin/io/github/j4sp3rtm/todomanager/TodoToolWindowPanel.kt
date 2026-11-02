@@ -8,6 +8,7 @@ import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.fileEditor.FileEditorManagerKeys
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.options.ShowSettingsUtil
+import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.guessProjectDir
 import com.intellij.openapi.ui.ComboBoxWithWidePopup
@@ -139,10 +140,12 @@ class TodoToolWindowPanel(private val project: Project) : JPanel(BorderLayout())
             invokeLater { syncToolbarFromSettings(); rebuildTree() }
         }
 
-        // Initial scan, and warm the git-user cache so the first "Mark as Done" doesn't block the EDT.
-        ApplicationManager.getApplication().executeOnPooledThread {
-            GitUser.userName(project)
-            scannerService.refresh()
+        // Warm the git-user cache so the first "Mark as Done" doesn't block the EDT.
+        ApplicationManager.getApplication().executeOnPooledThread { GitUser.userName(project) }
+        // Initial scan, once indexing is done: at startup it would otherwise compete with the indexer
+        // for CPU and the read lock, which is when most freeze reports came from.
+        DumbService.getInstance(project).runWhenSmart {
+            ApplicationManager.getApplication().executeOnPooledThread { scannerService.refresh() }
         }
     }
 
